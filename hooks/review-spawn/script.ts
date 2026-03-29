@@ -1,36 +1,36 @@
 #!/usr/bin/env bun
-import { readFile, appendFile } from "node:fs/promises"
+import { appendFile, readFile } from "node:fs/promises"
 
-const taskId   = process.env['LOGBOOK_TASK_ID']    ?? ''
-const dataFile = process.env['LOGBOOK_TASKS_FILE'] ?? './tasks.jsonl'
+const taskId = process.env.LOGBOOK_TASK_ID ?? ""
+const dataFile = process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl"
 
-if (taskId === '') process.exit(0)
+if (taskId === "") process.exit(0)
 
 const readLines = async (filePath: string): Promise<readonly string[]> => {
   const content = await readFile(filePath, "utf8").catch((e: unknown) => {
     if (isEnoent(e)) return ""
     throw e
   })
-  return content.split("\n").filter(l => l.trim() !== "")
+  return content.split("\n").filter((l) => l.trim() !== "")
 }
 
 interface RawAgent {
-  id:          string
-  title:       string
+  id: string
+  title: string
   description: string
 }
 
 interface RawTask {
-  project:            string
-  milestone:          string
-  id:                 string
-  title:              string
+  project: string
+  milestone: string
+  id: string
+  title: string
   definition_of_done: string
-  description:        string
-  estimation:         number
-  comments:           unknown[]
-  assignee:           RawAgent
-  status:             string
+  description: string
+  estimation: number
+  comments: unknown[]
+  assignee: RawAgent
+  status: string
   in_progress_since?: string
 }
 
@@ -61,7 +61,7 @@ if (original === null) process.exit(0)
 const reviewId = `review-${original.id}`
 
 // Idempotency check: skip if a task with the review id already exists
-const alreadyExists = lines.some(line => {
+const alreadyExists = lines.some((line) => {
   const task = parseTask(line)
   return task !== null && task.id === reviewId
 })
@@ -69,23 +69,23 @@ const alreadyExists = lines.some(line => {
 if (alreadyExists) process.exit(0)
 
 const reviewTask: RawTask = {
-  project:            original.project,
-  milestone:          original.milestone,
-  id:                 reviewId,
-  title:              `Review: ${original.title}`,
+  project: original.project,
+  milestone: original.milestone,
+  id: reviewId,
+  title: `Review: ${original.title}`,
   definition_of_done: "Review approved",
-  description:        `Review task for ${original.id}`,
-  estimation:         1,
-  comments:           [],
-  assignee:           original.assignee,
-  status:             "todo",
+  description: `Review task for ${original.id}`,
+  estimation: 1,
+  comments: [],
+  assignee: original.assignee,
+  status: "todo",
 }
 
-await appendFile(dataFile, JSON.stringify(reviewTask) + "\n", "utf8")
+await appendFile(dataFile, `${JSON.stringify(reviewTask)}\n`, "utf8")
 
 const { execSync } = await import("node:child_process")
 const path = await import("node:path")
-const projectRoot = path.dirname(path.dirname(path.dirname(import.meta.url.replace("file://", ""))))
+const projectRoot = path.dirname(process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl")
 const mcpConfig = path.join(projectRoot, ".claude/mcp-config.json")
 execSync(
   `claude --model claude-haiku-4-5-20251001 --mcp-config ${mcpConfig} --agent reviewer --task "review task ${reviewId}"`,

@@ -1,5 +1,5 @@
 import { Effect } from "effect"
-import type { Task, Status, TaskError } from "../domain/types.js"
+import type { Status, Task, TaskError } from "../domain/types.js"
 import { TaskRepository } from "./ports.js"
 
 /**
@@ -7,6 +7,6 @@ import { TaskRepository } from "./ports.js"
  * Fails with `validation_error` when the underlying data is malformed.
  */
 export const listTasks = (
-  status: Status | '*',
+  status: Status | "*"
 ): Effect.Effect<readonly Task[], TaskError, TaskRepository> =>
-  Effect.flatMap(TaskRepository, repo => repo.findByStatus(status))
+  Effect.flatMap(TaskRepository, (repo) => repo.findByStatus(status))

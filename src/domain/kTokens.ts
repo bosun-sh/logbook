@@ -2,9 +2,9 @@ import { Effect } from "effect"
 import type { TaskError } from "./types.js"
 
 export interface KTokensConfig {
-  anchorPoint: number      // Fibonacci number to anchor against
-  kTokensAtAnchor: number  // how many kTokens map to anchorPoint
-  maxKTokens: number       // cap (inclusive)
+  anchorPoint: number // Fibonacci number to anchor against
+  kTokensAtAnchor: number // how many kTokens map to anchorPoint
+  maxKTokens: number // cap (inclusive)
 }
 
 export const defaultConfig: KTokensConfig = {
@@ -18,21 +18,21 @@ const FIBONACCI = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144]
 
 export const estimateFromKTokens = (
   kTokens: number,
-  config: KTokensConfig = defaultConfig,
+  config: KTokensConfig = defaultConfig
 ): Effect.Effect<number, TaskError> => {
   // Fail if kTokens <= 0
   if (kTokens <= 0) {
     return Effect.fail({
-      _tag: 'validation_error',
-      message: 'predicted kilotokens must be positive',
+      _tag: "validation_error",
+      message: "predicted kilotokens must be positive",
     })
   }
 
   // Fail if kTokens > config.maxKTokens
   if (kTokens > config.maxKTokens) {
     return Effect.fail({
-      _tag: 'validation_error',
-      message: 'predicted kilotokens exceed maximum allowed',
+      _tag: "validation_error",
+      message: "predicted kilotokens exceed maximum allowed",
     })
   }
 

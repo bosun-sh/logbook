@@ -1,11 +1,11 @@
-import { Context, Effect } from "effect"
-import type { Status, Comment } from "../domain/types.js"
+import { Context, type Effect } from "effect"
+import type { Comment, Status } from "../domain/types.js"
 
 export interface HookEvent {
-  task_id:    string
+  task_id: string
   old_status: Status
   new_status: Status
-  comment:    Comment | null
+  comment: Comment | null
   session_id: string
 }
 

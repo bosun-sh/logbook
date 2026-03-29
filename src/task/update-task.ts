@@ -1,8 +1,8 @@
 import { Effect } from "effect"
-import type { Status, Comment, TaskError } from "../domain/types.js"
-import { TaskRepository } from "./ports.js"
-import { HookRunner } from "../hook/ports.js"
 import { guardTransition } from "../domain/status-machine.js"
+import type { Comment, Status, TaskError } from "../domain/types.js"
+import { HookRunner } from "../hook/ports.js"
+import { TaskRepository } from "./ports.js"
 
 /**
  * Transitions a task to a new status, optionally attaching or replying to a comment.
@@ -14,7 +14,7 @@ export const updateTask = (
   id: string,
   newStatus: Status,
   comment: Comment | null,
-  sessionId: string,
+  sessionId: string
 ): Effect.Effect<void, TaskError, TaskRepository | HookRunner> =>
   Effect.gen(function* () {
     const repo = yield* TaskRepository
@@ -30,17 +30,17 @@ export const updateTask = (
     // Must run before the no-op check because a reply update is meaningful
     // even when the status is not changing.
     if (comment !== null) {
-      const existing = task.comments.find(c => c.id === comment.id)
+      const existing = task.comments.find((c) => c.id === comment.id)
       if (existing !== undefined) {
-        if (existing.kind === 'regular') {
+        if (existing.kind === "regular") {
           return yield* Effect.fail<TaskError>({
-            _tag: 'validation_error',
-            message: 'reply is only valid on need_info comments',
+            _tag: "validation_error",
+            message: "reply is only valid on need_info comments",
           })
         }
         // existing.kind === 'need_info': merge reply and persist, no hook, no status change
-        const updatedComments = task.comments.map(c =>
-          c.id === comment.id ? { ...c, reply: comment.reply } : c,
+        const updatedComments = task.comments.map((c) =>
+          c.id === comment.id ? { ...c, reply: comment.reply } : c
         )
         const updatedTask = { ...task, comments: updatedComments }
         yield* repo.update(updatedTask)
@@ -52,45 +52,45 @@ export const updateTask = (
     if (task.status === newStatus) return
 
     // Step 5: need_info requires a comment
-    if (newStatus === 'need_info' && comment === null) {
-      return yield* Effect.fail<TaskError>({ _tag: 'missing_comment' })
+    if (newStatus === "need_info" && comment === null) {
+      return yield* Effect.fail<TaskError>({ _tag: "missing_comment" })
     }
 
     // Step 6: blocked requires a non-empty comment
-    if (newStatus === 'blocked') {
+    if (newStatus === "blocked") {
       if (comment === null) {
-        return yield* Effect.fail<TaskError>({ _tag: 'missing_comment' })
+        return yield* Effect.fail<TaskError>({ _tag: "missing_comment" })
       }
-      if (comment.content.trim() === '') {
+      if (comment.content.trim() === "") {
         return yield* Effect.fail<TaskError>({
-          _tag: 'validation_error',
-          message: 'blocked requires a non-empty comment',
+          _tag: "validation_error",
+          message: "blocked requires a non-empty comment",
         })
       }
     }
 
     // Step 7: transitioning FROM need_info — all need_info comments must have a reply
-    if (task.status === 'need_info') {
-      const blocking = task.comments.find(c => c.kind === 'need_info' && c.reply === '')
+    if (task.status === "need_info") {
+      const blocking = task.comments.find((c) => c.kind === "need_info" && c.reply === "")
       if (blocking !== undefined) {
         return yield* Effect.fail<TaskError>({
-          _tag: 'validation_error',
+          _tag: "validation_error",
           message: `blocking comment ${blocking.id} has no reply`,
         })
       }
     }
 
     // Step 8: concurrent in_progress — second task for same session requires justification
-    if (newStatus === 'in_progress') {
-      const inProgressTasks = yield* repo.findByStatus('in_progress')
+    if (newStatus === "in_progress") {
+      const inProgressTasks = yield* repo.findByStatus("in_progress")
       const sessionInProgress = inProgressTasks.filter(
-        t => t.assignee.id === sessionId && t.id !== task.id,
+        (t) => t.assignee.id === sessionId && t.id !== task.id
       )
       if (sessionInProgress.length > 0) {
-        if (comment === null || comment.content.trim() === '') {
+        if (comment === null || comment.content.trim() === "") {
           return yield* Effect.fail<TaskError>({
-            _tag: 'validation_error',
-            message: 'moving a second task to in_progress requires a justification comment',
+            _tag: "validation_error",
+            message: "moving a second task to in_progress requires a justification comment",
           })
         }
       }
@@ -98,13 +98,12 @@ export const updateTask = (
 
     // Step 9: apply changes
     const oldStatus = task.status
-    const updatedComments =
-      comment !== null ? [...task.comments, comment] : task.comments
+    const updatedComments = comment !== null ? [...task.comments, comment] : task.comments
     const updatedTask = {
       ...task,
       status: newStatus,
       comments: updatedComments,
-      ...(newStatus === 'in_progress' ? { in_progress_since: new Date() } : {}),
+      ...(newStatus === "in_progress" ? { in_progress_since: new Date() } : {}),
     }
     yield* repo.update(updatedTask)
     yield* hookRunner.run({
