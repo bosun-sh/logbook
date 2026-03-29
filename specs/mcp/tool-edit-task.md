@@ -26,7 +26,7 @@ const EditTaskInputSchema = z.object({
   title:              z.string().min(1).optional(),
   description:        z.string().min(1).optional(),
   definition_of_done: z.string().min(1).optional(),
-  estimation:         z.number().int().positive().optional(),
+  predictedKTokens:   z.number().positive().optional(),
 })
 type EditTaskMcpInput = z.infer<typeof EditTaskInputSchema>
 ```
@@ -40,7 +40,7 @@ type EditTaskMcpInput = z.infer<typeof EditTaskInputSchema>
 | `title` | `string` | no | |
 | `description` | `string` | no | |
 | `definition_of_done` | `string` | no | |
-| `estimation` | `number` | no | Must be Fibonacci |
+| `predictedKTokens` | `number` | no | Must be within cap |
 
 ### Outputs
 | Case | Response |
@@ -56,7 +56,7 @@ type EditTaskMcpInput = z.infer<typeof EditTaskInputSchema>
 
 ## Behaviour
 1. Parse input; extract `id`, pass remaining fields to `editTask`.
-2. Call `editTask(input.id, { title, description, definition_of_done, estimation })`.
+2. Call `editTask(input.id, { title, description, definition_of_done, predictedKTokens })`.
 3. On success: return `{ task }`.
 4. On `TaskError`: map via `taskErrorToMcpError`.
 
@@ -68,11 +68,11 @@ Feature: edit_task MCP tool
     When edit_task({ id, title: "New" }) is called
     Then response.task.title is "New"
 
-  Scenario: non-Fibonacci estimation → error -32003
+  Scenario: predictedKTokens exceeds cap → error -32003
     Given task "t-1" exists
-    When edit_task({ id: "t-1", estimation: 4 }) is called
+    When edit_task({ id: "t-1", predictedKTokens: 25 }) is called
     Then MCP error code -32003 is returned
-    And error data contains message "estimation must be a Fibonacci number"
+    And error data contains message "predicted kilotokens exceed maximum allowed"
 
   Scenario: unknown id → error -32001
     When edit_task({ id: "ghost-id", title: "New" }) is called

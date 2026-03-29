@@ -7,6 +7,7 @@ Atomic, AI-first specifications for the logbook MVP. Each file is independently 
 ### Wave 1 — no deps
 1. [domain/types](domain/types.md) — Zod schemas + TaskError union
 2. [domain/fibonacci](domain/fibonacci.md) — validateFibonacci
+2b. [domain/kTokens](domain/kTokens.md) — estimateFromKTokens
 3. [domain/status-machine](domain/status-machine.md) — guardTransition
 4. [task/ports](task/ports.md) — TaskRepository port
 5. [hook/ports](hook/ports.md) — HookRunner + HookEvent
@@ -49,6 +50,7 @@ Atomic, AI-first specifications for the logbook MVP. Each file is independently 
 ```
 domain/types
     ├── domain/fibonacci
+    ├── domain/kTokens ──── domain/fibonacci
     ├── domain/status-machine
     ├── mcp/error-codes
     ├── task/ports
