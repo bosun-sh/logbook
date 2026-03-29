@@ -35,13 +35,14 @@ const runFailWith = <A>(
   )
 }
 
+// 8 kTokens → ratio=2.5, scaled=3.2, nearest Fibonacci=3
 const validInput = {
   project:            "alpha",
   milestone:          "m1",
   title:              "My task",
   definition_of_done: "It passes tests",
   description:        "Some description",
-  estimation:         3,
+  predictedKTokens:   8,
 }
 
 let repo: InMemoryTaskRepository
@@ -73,6 +74,11 @@ describe("createTask / happy path", () => {
     expect(typeof task.id).toBe("string")
     expect(task.id.length).toBeGreaterThan(0)
   })
+
+  test("estimation derived from predictedKTokens via Fibonacci mapping", async () => {
+    const task = await runWith(createTask(validInput, "s1"), repo)
+    expect(task.estimation).toBe(3)
+  })
 })
 
 describe("createTask / validation errors", () => {
@@ -88,33 +94,26 @@ describe("createTask / validation errors", () => {
     })
   }
 
-  test("missing estimation → validation_error", async () => {
-    const input = { ...validInput, estimation: undefined as unknown as number }
+  test("missing predictedKTokens → validation_error", async () => {
+    const input = { ...validInput, predictedKTokens: undefined as unknown as number }
     const err = await runFailWith(createTask(input, "s1"), repo)
     expect(err._tag).toBe("validation_error")
   })
 
-  test("estimation: 4 → validation_error (not Fibonacci)", async () => {
-    const err = await runFailWith(createTask({ ...validInput, estimation: 4 }, "s1"), repo)
+  test("predictedKTokens: 21 → validation_error (exceeds max)", async () => {
+    const err = await runFailWith(createTask({ ...validInput, predictedKTokens: 21 }, "s1"), repo)
     expect(err).toMatchObject({
       _tag:    "validation_error",
-      message: "estimation must be a Fibonacci number",
+      message: "predicted kilotokens exceed maximum allowed",
     })
   })
 })
 
 describe("createTask / duplicate id", () => {
   test("duplicate id → conflict", async () => {
-    // Create first, then attempt to save with same id by seeding the repo
+    // Create task, which saves it to the repo
     const task = await runWith(createTask(validInput, "s1"), repo)
-    // Manually re-save via repo to force a collision on a second direct save
-    await Effect.runPromise(Effect.provide(
-      Effect.flatMap(TaskRepository, r => r.save(task)),
-      makeLayer(repo),
-    ) as Effect.Effect<void, never>)
-    // createTask should fail because repo already has a task with same id
-    // We simulate by seeding the exact id the second call would generate is hard,
-    // so we test the repository conflict directly:
+    // Attempt to save the same task again via repo should fail with conflict
     const err = await runFailWith(
       Effect.flatMap(TaskRepository, r => r.save(task)),
       repo,

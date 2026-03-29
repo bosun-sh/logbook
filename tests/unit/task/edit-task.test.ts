@@ -57,10 +57,11 @@ describe("editTask / happy path", () => {
     expect(updated.definition_of_done).toBe("New DoD")
   })
 
-  test("edits estimation with valid Fibonacci value", async () => {
+  // 8 kTokens → ratio=2.5, scaled=3.2, nearest Fibonacci=3
+  test("edits estimation via predictedKTokens mapping", async () => {
     const task = await seedTask()
-    const updated = await run(editTask(task.id, { estimation: 8 }))
-    expect(updated.estimation).toBe(8)
+    const updated = await run(editTask(task.id, { predictedKTokens: 8 }))
+    expect(updated.estimation).toBe(3)
   })
 })
 
@@ -70,12 +71,12 @@ describe("editTask / error cases", () => {
     expect(err._tag).toBe("not_found")
   })
 
-  test("invalid Fibonacci estimation → validation_error", async () => {
+  test("predictedKTokens exceeding max → validation_error", async () => {
     const task = await seedTask()
-    const err = await runFail(editTask(task.id, { estimation: 4 }))
+    const err = await runFail(editTask(task.id, { predictedKTokens: 25 }))
     expect(err).toMatchObject({
       _tag:    "validation_error",
-      message: "estimation must be a Fibonacci number",
+      message: "predicted kilotokens exceed maximum allowed",
     })
   })
 

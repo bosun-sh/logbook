@@ -8,7 +8,8 @@
     "test:watch": "bun test --watch",
     "test:unit":  "bun test tests/unit/",
     "test:e2e":   "bun test tests/e2e/",
-    "typecheck":  "tsc --noEmit"
+    "typecheck":  "tsc --noEmit",
+    "start":      "bun src/mcp/server.ts"
   },
   "dependencies": {
     "effect": "^3.12.0",
