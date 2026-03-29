@@ -1,5 +1,5 @@
-import { Effect } from "effect"
 import type { HookEvent, HookRunner } from "@logbook/hook/ports.js"
+import { Effect } from "effect"
 
 export class SpyHookRunner implements HookRunner {
   calls: HookEvent[] = []

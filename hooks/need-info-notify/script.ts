@@ -1,30 +1,30 @@
 #!/usr/bin/env bun
 import { readFile } from "node:fs/promises"
 
-const taskId   = process.env['LOGBOOK_TASK_ID']    ?? ''
-const dataFile = process.env['LOGBOOK_TASKS_FILE'] ?? './tasks.jsonl'
+const taskId = process.env.LOGBOOK_TASK_ID ?? ""
+const dataFile = process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl"
 
-if (taskId === '') process.exit(0)
+if (taskId === "") process.exit(0)
 
 const readLines = async (filePath: string): Promise<readonly string[]> => {
   const content = await readFile(filePath, "utf8").catch((e: unknown) => {
     if (isEnoent(e)) return ""
     throw e
   })
-  return content.split("\n").filter(l => l.trim() !== "")
+  return content.split("\n").filter((l) => l.trim() !== "")
 }
 
 interface RawComment {
-  id:        string
+  id: string
   timestamp: string
-  title:     string
-  content:   string
-  reply:     string
-  kind:      string
+  title: string
+  content: string
+  reply: string
+  kind: string
 }
 
 interface RawTask {
-  id:       string
+  id: string
   comments: RawComment[]
 }
 
@@ -40,7 +40,7 @@ const findBlockingComment = (task: RawTask): RawComment | null => {
   // Find the most recent need_info comment with an empty reply
   for (let i = task.comments.length - 1; i >= 0; i--) {
     const comment = task.comments[i]
-    if (comment !== undefined && comment.kind === 'need_info' && comment.reply === '') {
+    if (comment !== undefined && comment.kind === "need_info" && comment.reply === "") {
       return comment
     }
   }

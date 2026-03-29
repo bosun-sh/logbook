@@ -1,13 +1,13 @@
 import { Effect } from "effect"
-import type { Task, TaskError } from "../domain/types.js"
 import { estimateFromKTokens } from "../domain/kTokens.js"
+import type { Task, TaskError } from "../domain/types.js"
 import { TaskRepository } from "./ports.js"
 
 export interface EditTaskInput {
-  title?:              string
-  description?:        string
+  title?: string
+  description?: string
   definition_of_done?: string
-  predictedKTokens?:   number
+  predictedKTokens?: number
 }
 
 /**
@@ -18,55 +18,41 @@ export interface EditTaskInput {
  */
 export const editTask = (
   id: string,
-  updates: EditTaskInput,
+  updates: EditTaskInput
 ): Effect.Effect<Task, TaskError, TaskRepository> => {
   // Check for attempted status modification (runtime guard against type system bypass)
-  if ('status' in updates) {
+  if ("status" in updates) {
     return Effect.fail({
-      _tag: 'validation_error' as const,
-      message: 'status field cannot be edited',
+      _tag: "validation_error" as const,
+      message: "status field cannot be edited",
     })
   }
 
   // Derive estimation from predictedKTokens if present
   if (updates.predictedKTokens !== undefined) {
-    return Effect.flatMap(
-      estimateFromKTokens(updates.predictedKTokens),
-      (estimation) =>
-        Effect.flatMap(TaskRepository, repo =>
-          Effect.flatMap(
-            repo.findById(id),
-            (task) => {
-              const { predictedKTokens: _, ...rest } = updates
-              const updatedTask: Task = {
-                ...task,
-                ...rest,
-                estimation,
-              }
-              return Effect.flatMap(
-                repo.update(updatedTask),
-                () => Effect.succeed(updatedTask),
-              )
-            },
-          ),
-        ),
+    return Effect.flatMap(estimateFromKTokens(updates.predictedKTokens), (estimation) =>
+      Effect.flatMap(TaskRepository, (repo) =>
+        Effect.flatMap(repo.findById(id), (task) => {
+          const { predictedKTokens: _, ...rest } = updates
+          const updatedTask: Task = {
+            ...task,
+            ...rest,
+            estimation,
+          }
+          return Effect.flatMap(repo.update(updatedTask), () => Effect.succeed(updatedTask))
+        })
+      )
     )
   }
 
   // No estimation to derive, proceed directly with find and update
-  return Effect.flatMap(TaskRepository, repo =>
-    Effect.flatMap(
-      repo.findById(id),
-      (task) => {
-        const updatedTask: Task = {
-          ...task,
-          ...updates,
-        }
-        return Effect.flatMap(
-          repo.update(updatedTask),
-          () => Effect.succeed(updatedTask),
-        )
-      },
-    ),
+  return Effect.flatMap(TaskRepository, (repo) =>
+    Effect.flatMap(repo.findById(id), (task) => {
+      const updatedTask: Task = {
+        ...task,
+        ...updates,
+      }
+      return Effect.flatMap(repo.update(updatedTask), () => Effect.succeed(updatedTask))
+    })
   )
 }
