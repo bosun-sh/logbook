@@ -124,3 +124,18 @@ type EditTask = (id: string, updates: EditTaskInput) => Task
 ```
 
 each MCP session is treated as a distinct agent instance. the server assigns a `session_id` on connection and uses it to scope `GetCurrentTask` — no explicit agent ID needs to be passed by the caller.
+
+## security
+
+### hook conditions are trusted code
+
+hook `config.yml` files support an optional `condition` field (e.g. `"new_status == 'pending_review'"`). these conditions are compiled and evaluated as live JavaScript at runtime — equivalent in trust level to a shell script.
+
+**what this means for you:**
+
+- **only add hooks from sources you trust.** a malicious `config.yml` condition can execute arbitrary code in the process that runs the MCP server.
+- **do not expose `LOGBOOK_HOOKS_DIR` to external write access.** if an untrusted process can write files under the hooks directory, it can inject conditions that execute as the MCP server's user.
+- the built-in hooks shipped with logbook are safe — they use simple equality checks (`new_status == 'need_info'`).
+- if a condition throws or is malformed, the hook is skipped silently and execution continues — it fails safe.
+
+the security model here is the same as running a `Makefile` or a `.husky/` script: filesystem-level trust. as long as you control what goes into your hooks directory, you are safe.
