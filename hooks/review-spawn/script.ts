@@ -82,3 +82,12 @@ const reviewTask: RawTask = {
 }
 
 await appendFile(dataFile, JSON.stringify(reviewTask) + "\n", "utf8")
+
+const { execSync } = await import("node:child_process")
+const path = await import("node:path")
+const projectRoot = path.dirname(path.dirname(path.dirname(import.meta.url.replace("file://", ""))))
+const mcpConfig = path.join(projectRoot, ".claude/mcp-config.json")
+execSync(
+  `claude --model claude-haiku-4-5-20251001 --mcp-config ${mcpConfig} --agent reviewer --task "review task ${reviewId}"`,
+  { stdio: "inherit", env: { ...process.env, LOGBOOK_TASKS_FILE: dataFile } }
+)
