@@ -3,12 +3,12 @@ import type { Status, TaskError } from "./types.js"
 
 // Allowed state transitions: from → [to, to, ...]
 const allowedTransitions: Record<Status, Status[]> = {
-  backlog: ['todo'],
-  todo: ['backlog', 'in_progress'],
-  in_progress: ['todo', 'pending_review', 'need_info', 'blocked'],
-  blocked: ['in_progress'],
-  need_info: ['in_progress'],
-  pending_review: ['done', 'in_progress'],
+  backlog: ["todo"],
+  todo: ["backlog", "in_progress"],
+  in_progress: ["todo", "pending_review", "need_info", "blocked"],
+  blocked: ["in_progress"],
+  need_info: ["in_progress"],
+  pending_review: ["done", "in_progress"],
   done: [],
 }
 
@@ -17,10 +17,7 @@ const allowedTransitions: Record<Status, Status[]> = {
  * and Effect.fail({ _tag: 'transition_not_allowed', from, to }) otherwise.
  * A same→same transition is always a no-op success.
  */
-export const guardTransition = (
-  from: Status,
-  to: Status,
-): Effect.Effect<void, TaskError> => {
+export const guardTransition = (from: Status, to: Status): Effect.Effect<void, TaskError> => {
   // Same→same is always a no-op success
   if (from === to) {
     return Effect.void
@@ -34,7 +31,7 @@ export const guardTransition = (
 
   // Transition not allowed
   return Effect.fail({
-    _tag: 'transition_not_allowed',
+    _tag: "transition_not_allowed",
     from,
     to,
   } as TaskError)

@@ -1,19 +1,19 @@
 #!/usr/bin/env bun
 import { createInterface } from "node:readline"
-import { Effect, Layer } from "effect"
-import { JsonlTaskRepository } from "../infra/jsonl-task-repository.js"
-import { loadHookConfigs } from "../infra/hook-config-loader.js"
+import { Layer } from "effect"
 import { executeHooks } from "../hook/hook-executor.js"
-import { TaskRepository } from "../task/ports.js"
-import { HookRunner } from "../hook/ports.js"
 import type { HookEvent } from "../hook/ports.js"
+import { HookRunner } from "../hook/ports.js"
+import { loadHookConfigs } from "../infra/hook-config-loader.js"
+import { JsonlTaskRepository } from "../infra/jsonl-task-repository.js"
+import { TaskRepository } from "../task/ports.js"
 import { taskErrorToMcpError } from "./error-codes.js"
 import { newSessionId } from "./session.js"
-import { toolListTasks } from "./tool-list-tasks.js"
-import { toolCurrentTask } from "./tool-current-task.js"
-import { toolUpdateTask } from "./tool-update-task.js"
 import { toolCreateTask } from "./tool-create-task.js"
+import { toolCurrentTask } from "./tool-current-task.js"
 import { toolEditTask } from "./tool-edit-task.js"
+import { toolListTasks } from "./tool-list-tasks.js"
+import { toolUpdateTask } from "./tool-update-task.js"
 
 // ---------------------------------------------------------------------------
 // JSON-RPC 2.0 types
@@ -21,24 +21,24 @@ import { toolEditTask } from "./tool-edit-task.js"
 
 interface JsonRpcRequest {
   jsonrpc: "2.0"
-  id:      string | number | null
-  method:  string
+  id: string | number | null
+  method: string
   params?: unknown
 }
 
 interface JsonRpcSuccess {
   jsonrpc: "2.0"
-  id:      string | number | null
-  result:  unknown
+  id: string | number | null
+  result: unknown
 }
 
 interface JsonRpcError {
   jsonrpc: "2.0"
-  id:      string | number | null
+  id: string | number | null
   error: {
-    code:    number
+    code: number
     message: string
-    data?:   unknown
+    data?: unknown
   }
 }
 
@@ -58,17 +58,18 @@ const errorResponse = (
   id: string | number | null,
   code: number,
   message: string,
-  data?: unknown,
+  data?: unknown
 ): JsonRpcError => ({
   jsonrpc: "2.0",
   id,
   error: data !== undefined ? { code, message, data } : { code, message },
 })
 
-const parseError      = (id: string | number | null): JsonRpcError => errorResponse(id, -32700, "Parse error")
-const methodNotFound  = (id: string | number | null, method: string): JsonRpcError =>
+const parseError = (id: string | number | null): JsonRpcError =>
+  errorResponse(id, -32700, "Parse error")
+const methodNotFound = (id: string | number | null, method: string): JsonRpcError =>
   errorResponse(id, -32601, `Method not found: ${method}`)
-const internalError   = (id: string | number | null, message: string): JsonRpcError =>
+const internalError = (id: string | number | null, message: string): JsonRpcError =>
   errorResponse(id, -32603, message)
 
 // ---------------------------------------------------------------------------
@@ -76,11 +77,11 @@ const internalError   = (id: string | number | null, message: string): JsonRpcEr
 // ---------------------------------------------------------------------------
 
 export const startServer = async (): Promise<void> => {
-  const tasksFile = process.env['LOGBOOK_TASKS_FILE'] ?? './tasks.jsonl'
-  const hooksDir  = process.env['LOGBOOK_HOOKS_DIR']  ?? './hooks'
+  const tasksFile = process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl"
+  const hooksDir = process.env.LOGBOOK_HOOKS_DIR ?? "./hooks"
 
   const configs = await loadHookConfigs(hooksDir)
-  const repo    = new JsonlTaskRepository(tasksFile)
+  const repo = new JsonlTaskRepository(tasksFile)
 
   const hookRunnerImpl: HookRunner = {
     run: (event: HookEvent) => executeHooks(event, configs),
@@ -89,7 +90,7 @@ export const startServer = async (): Promise<void> => {
   const repoLayer: Layer.Layer<TaskRepository> = Layer.succeed(TaskRepository, repo)
   const fullLayer: Layer.Layer<TaskRepository | HookRunner> = Layer.merge(
     repoLayer,
-    Layer.succeed(HookRunner, hookRunnerImpl),
+    Layer.succeed(HookRunner, hookRunnerImpl)
   )
 
   const sessionId = newSessionId()
@@ -122,7 +123,7 @@ export const startServer = async (): Promise<void> => {
   const rl = createInterface({ input: process.stdin, terminal: false })
 
   const send = (response: JsonRpcResponse): void => {
-    process.stdout.write(JSON.stringify(response) + "\n")
+    process.stdout.write(`${JSON.stringify(response)}\n`)
   }
 
   rl.on("line", (line) => {
@@ -140,7 +141,9 @@ export const startServer = async (): Promise<void> => {
     const id = request.id ?? null
 
     dispatch(request.method, request.params ?? {})
-      .then((result) => { send(successResponse(id, result)) })
+      .then((result) => {
+        send(successResponse(id, result))
+      })
       .catch((err: unknown) => {
         if (err instanceof MethodNotFoundError) {
           send(methodNotFound(id, err.method))
@@ -161,7 +164,9 @@ export const startServer = async (): Promise<void> => {
       })
   })
 
-  rl.on("close", () => { process.exit(0) })
+  rl.on("close", () => {
+    process.exit(0)
+  })
 }
 
 // ---------------------------------------------------------------------------

@@ -4,8 +4,8 @@ import { z } from "zod"
 import type { HookConfig } from "../hook/hook-executor.js"
 
 const HookConfigFileSchema = z.object({
-  event:      z.string(),
-  condition:  z.string().optional(),
+  event: z.string(),
+  condition: z.string().optional(),
   timeout_ms: z.number().optional(),
 })
 
@@ -68,7 +68,10 @@ export const loadHookConfigs = async (hooksDir: string): Promise<HookConfig[]> =
       const parsed = parseSimpleYaml(raw)
       const validated = HookConfigFileSchema.safeParse(parsed)
       if (!validated.success) {
-        console.warn(`[hook-config-loader] invalid config at ${configPath}:`, validated.error.message)
+        console.warn(
+          `[hook-config-loader] invalid config at ${configPath}:`,
+          validated.error.message
+        )
         continue
       }
       const script = await findScript(hookDir)
