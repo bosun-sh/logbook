@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+echo "→ lint"
+bun run check
+
+echo "→ typecheck"
+bun run typecheck
+
+echo "→ tests + coverage (threshold: 95%)"
+bun test --coverage

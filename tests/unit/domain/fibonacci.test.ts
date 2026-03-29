@@ -1,6 +1,6 @@
-import { Effect } from "effect"
-import { describe, test, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { validateFibonacci } from "@logbook/domain/fibonacci.js"
+import { Effect } from "effect"
 
 const run = <A, E>(effect: Effect.Effect<A, E>): Promise<A> =>
   Effect.runPromise(effect as Effect.Effect<A, never>)
@@ -11,8 +11,8 @@ const runFail = <A, E>(effect: Effect.Effect<A, E>): Promise<E> =>
       Effect.matchEffect({
         onFailure: (e) => Effect.succeed(e),
         onSuccess: () => Effect.die(new Error("Expected failure but got success")),
-      }),
-    ),
+      })
+    )
   )
 
 describe("fibonacci / valid values", () => {
@@ -32,8 +32,8 @@ describe("fibonacci / invalid values", () => {
     test(`${n} fails with validation_error`, async () => {
       const err = await runFail(validateFibonacci(n))
       expect(err).toMatchObject({
-        _tag:    'validation_error',
-        message: 'estimation must be a Fibonacci number',
+        _tag: "validation_error",
+        message: "estimation must be a Fibonacci number",
       })
     })
   }

@@ -1,6 +1,6 @@
-import { Effect } from "effect"
-import { describe, test, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { estimateFromKTokens } from "@logbook/domain/kTokens.js"
+import { Effect } from "effect"
 
 const run = <A>(e: Effect.Effect<A, unknown>): Promise<A> =>
   Effect.runPromise(e as Effect.Effect<A, never>)
@@ -11,8 +11,8 @@ const runFail = <A>(e: Effect.Effect<A, unknown>): Promise<{ _tag: string }> =>
       Effect.matchEffect({
         onFailure: (err) => Effect.succeed(err as { _tag: string }),
         onSuccess: () => Effect.die(new Error("Expected failure")),
-      }),
-    ) as Effect.Effect<{ _tag: string }, never>,
+      })
+    ) as Effect.Effect<{ _tag: string }, never>
   )
 
 describe("estimateFromKTokens", () => {
@@ -47,7 +47,9 @@ describe("estimateFromKTokens", () => {
   })
 
   test("kTokens=20 with custom config anchorPoint=5, kTokensAtAnchor=10 → 5", async () => {
-    const r = await run(estimateFromKTokens(10, { anchorPoint: 5, kTokensAtAnchor: 10, maxKTokens: 100 }))
+    const r = await run(
+      estimateFromKTokens(10, { anchorPoint: 5, kTokensAtAnchor: 10, maxKTokens: 100 })
+    )
     expect(r).toBe(5)
   })
 })

@@ -1,6 +1,6 @@
-import { Effect } from "effect"
-import type { Task, Status, TaskError } from "@logbook/domain/types.js"
+import type { Status, Task, TaskError } from "@logbook/domain/types.js"
 import type { TaskRepository } from "@logbook/task/ports.js"
+import { Effect } from "effect"
 
 export class InMemoryTaskRepository implements TaskRepository {
   private readonly store = new Map<string, Task>()
@@ -13,10 +13,10 @@ export class InMemoryTaskRepository implements TaskRepository {
     return Effect.succeed(task)
   }
 
-  findByStatus(status: Status | '*'): Effect.Effect<readonly Task[], never> {
+  findByStatus(status: Status | "*"): Effect.Effect<readonly Task[], never> {
     const tasks = Array.from(this.store.values())
-    if (status === '*') return Effect.succeed(tasks)
-    return Effect.succeed(tasks.filter(t => t.status === status))
+    if (status === "*") return Effect.succeed(tasks)
+    return Effect.succeed(tasks.filter((t) => t.status === status))
   }
 
   save(task: Task): Effect.Effect<void, TaskError> {

@@ -12,8 +12,8 @@ export const validateFibonacci = (n: number): Effect.Effect<void, TaskError> => 
   // Must be a positive integer
   if (!Number.isInteger(n) || n <= 0) {
     return Effect.fail({
-      _tag: 'validation_error',
-      message: 'estimation must be a Fibonacci number',
+      _tag: "validation_error",
+      message: "estimation must be a Fibonacci number",
     })
   }
 
@@ -33,7 +33,7 @@ export const validateFibonacci = (n: number): Effect.Effect<void, TaskError> => 
   }
 
   return Effect.fail({
-    _tag: 'validation_error',
-    message: 'estimation must be a Fibonacci number',
+    _tag: "validation_error",
+    message: "estimation must be a Fibonacci number",
   })
 }

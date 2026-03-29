@@ -1,9 +1,9 @@
-import { Effect, Layer } from "effect"
-import { describe, test, expect, beforeEach } from "bun:test"
+import { beforeEach, describe, expect, test } from "bun:test"
 import { editTask } from "@logbook/task/edit-task.js"
 import { TaskRepository } from "@logbook/task/ports.js"
-import { InMemoryTaskRepository } from "../../helpers/in-memory-task-repository.js"
+import { Effect, Layer } from "effect"
 import { makeTask } from "../../helpers/factories.js"
+import { InMemoryTaskRepository } from "../../helpers/in-memory-task-repository.js"
 
 type AnyError = { _tag: string; [k: string]: unknown }
 
@@ -14,32 +14,32 @@ const makeLayer = () => Layer.succeed(TaskRepository, repo)
 const run = <A>(effect: Effect.Effect<A, unknown, TaskRepository>): Promise<A> =>
   Effect.runPromise(Effect.provide(effect, makeLayer()) as Effect.Effect<A, never>)
 
-const runFail = <A>(
-  effect: Effect.Effect<A, unknown, TaskRepository>,
-): Promise<AnyError> =>
+const runFail = <A>(effect: Effect.Effect<A, unknown, TaskRepository>): Promise<AnyError> =>
   Effect.runPromise(
     Effect.provide(
       effect.pipe(
         Effect.matchEffect({
           onFailure: (e) => Effect.succeed(e as AnyError),
           onSuccess: () => Effect.die(new Error("Expected failure")),
-        }),
+        })
       ),
-      makeLayer(),
-    ) as Effect.Effect<AnyError, never>,
+      makeLayer()
+    ) as Effect.Effect<AnyError, never>
   )
 
 const seedTask = async (overrides: Parameters<typeof makeTask>[0] = {}) => {
   const task = makeTask(overrides)
-  await run(Effect.flatMap(TaskRepository, r => r.save(task)))
+  await run(Effect.flatMap(TaskRepository, (r) => r.save(task)))
   return task
 }
 
-beforeEach(() => { repo = new InMemoryTaskRepository() })
+beforeEach(() => {
+  repo = new InMemoryTaskRepository()
+})
 
 describe("editTask / happy path", () => {
   test("edits title; status unchanged", async () => {
-    const task = await seedTask({ status: 'in_progress', in_progress_since: new Date() })
+    const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
     const updated = await run(editTask(task.id, { title: "New Title" }))
     expect(updated.title).toBe("New Title")
     expect(updated.status).toBe(task.status)
@@ -75,7 +75,7 @@ describe("editTask / error cases", () => {
     const task = await seedTask()
     const err = await runFail(editTask(task.id, { predictedKTokens: 25 }))
     expect(err).toMatchObject({
-      _tag:    "validation_error",
+      _tag: "validation_error",
       message: "predicted kilotokens exceed maximum allowed",
     })
   })
@@ -83,7 +83,7 @@ describe("editTask / error cases", () => {
   test("attempting to set status field → validation_error", async () => {
     const task = await seedTask()
     // Cast to defeat the type system — simulates what happens at a system boundary
-    const err = await runFail(editTask(task.id, { status: 'done' } as never))
+    const err = await runFail(editTask(task.id, { status: "done" } as never))
     expect(err._tag).toBe("validation_error")
   })
 })
