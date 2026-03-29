@@ -21,6 +21,7 @@ type Comment = {
   title: string
   content: string
   reply: string   // populated when responding to a need_info comment
+  kind: 'need_info' | 'regular'  // drives the reply cycle
 }
 
 type Agent = {
@@ -39,6 +40,8 @@ type Task = {
   estimation: number  // fibonacci scale
   comments: Comment[]
   assignee: Agent
+  status: Status
+  in_progress_since?: Date  // set on entry to in_progress; drives FIFO in current_task
 }
 ```
 
@@ -48,7 +51,9 @@ type Task = {
 |------|-----------|-------|
 | `list_tasks` | `(status: Status \| '*') => Task[]` | defaults to `in_progress` |
 | `current_task` | `() => Task` | highest-priority in_progress task for the current session |
-| `update_task` | `(id, new_status, new_comment) => void` | triggers lifecycle hooks |
+| `update_task` | `(id, new_status, comment, sessionId) => void` | triggers lifecycle hooks; sessionId injected server-side |
+| `create_task` | `(input: CreateTaskInput, sessionId) => Task` | creates task in `backlog` assigned to session |
+| `edit_task` | `(id, updates: EditTaskInput) => Task` | edits mutable fields without status change |
 
 Each MCP session is a distinct agent instance. The server assigns a `session_id` on connection and uses it to scope `current_task` — callers never pass an agent ID explicitly.
 
