@@ -1,0 +1,3 @@
+event: task.status_changed
+condition: "new_status == 'need_info'"
+timeout_ms: 5000

@@ -1,0 +1,36 @@
+import { Effect, Layer } from "effect"
+import { z } from "zod"
+import { TaskRepository } from "../task/ports.js"
+import { editTask } from "../task/edit-task.js"
+import type { EditTaskInput } from "../task/edit-task.js"
+
+const InputSchema = z.object({
+  id:                  z.string().min(1),
+  title:               z.string().optional(),
+  description:         z.string().optional(),
+  definition_of_done:  z.string().optional(),
+  predictedKTokens:    z.number().positive().optional(),
+})
+
+export const toolEditTask = (
+  rawInput: unknown,
+  layer: Layer.Layer<TaskRepository>,
+): Promise<{ task: unknown }> => {
+  const parsed = InputSchema.parse(rawInput)
+  const { id } = parsed
+  // Build updates by omitting undefined fields (exact optional property types compliance)
+  const updates: EditTaskInput = {}
+  if (parsed.title !== undefined) updates.title = parsed.title
+  if (parsed.description !== undefined) updates.description = parsed.description
+  if (parsed.definition_of_done !== undefined) updates.definition_of_done = parsed.definition_of_done
+  if (parsed.predictedKTokens !== undefined) updates.predictedKTokens = parsed.predictedKTokens
+
+  return Effect.runPromise(
+    Effect.provide(
+      editTask(id, updates).pipe(
+        Effect.map(task => ({ task }))
+      ),
+      layer,
+    ) as Effect.Effect<{ task: unknown }, never>
+  )
+}

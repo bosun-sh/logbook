@@ -9,4 +9,18 @@ import { TaskRepository } from "./ports.js"
 export const currentTask = (
   sessionId: string,
 ): Effect.Effect<Task, TaskError, TaskRepository> =>
-  Effect.die(new Error("not implemented"))
+  Effect.flatMap(TaskRepository, repo =>
+    Effect.flatMap(repo.findByStatus('in_progress'), tasks => {
+      const assignedTasks = tasks.filter(t => t.assignee.id === sessionId)
+      const sorted = [...assignedTasks].sort((a, b) => {
+        // Tasks without in_progress_since go last
+        const aTime = a.in_progress_since?.getTime() ?? Infinity
+        const bTime = b.in_progress_since?.getTime() ?? Infinity
+        return aTime - bTime
+      })
+      const first = sorted[0]
+      return first !== undefined
+        ? Effect.succeed(first)
+        : Effect.fail({ _tag: 'no_current_task' as const })
+    }),
+  )

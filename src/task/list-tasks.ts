@@ -1,12 +1,12 @@
 import { Effect } from "effect"
-import type { Task, Status } from "../domain/types.js"
+import type { Task, Status, TaskError } from "../domain/types.js"
 import { TaskRepository } from "./ports.js"
 
 /**
  * Returns tasks matching the given status, or all tasks when status is '*'.
- * Never fails — returns empty array when nothing matches.
+ * Fails with `validation_error` when the underlying data is malformed.
  */
 export const listTasks = (
   status: Status | '*',
-): Effect.Effect<readonly Task[], never, TaskRepository> =>
-  Effect.die(new Error("not implemented"))
+): Effect.Effect<readonly Task[], TaskError, TaskRepository> =>
+  Effect.flatMap(TaskRepository, repo => repo.findByStatus(status))
