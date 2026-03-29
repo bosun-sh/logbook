@@ -87,7 +87,8 @@ type Comment = {
   timestamp: Date,
   title: string,
   content: string,
-  reply: string   // user's reply, populated when responding to a need_info comment
+  reply: string,  // user's reply, populated when responding to a need_info comment
+  kind: 'need_info' | 'regular'  // drives the reply cycle — only need_info comments accept replies
 }
 
 type Task = {
@@ -97,9 +98,11 @@ type Task = {
   title: string,
   definition_of_done: string,
   description: string,
-  estimation: number, // fibonacci scale
+  estimation: number,      // fibonacci scale
   comments: Comment[],
-  assignee: Agent
+  assignee: Agent,
+  status: Status,
+  in_progress_since?: Date // set when task enters in_progress; drives FIFO ordering in current_task
 }
 
 // status defaults to 'in_progress'
@@ -110,8 +113,14 @@ type ListTasks = (status: Status | '*') => Task[]
 // requires a comment justifying the overlap.
 type GetCurrentTask = () => Task
 
-// returns nothing, updates the task
-type UpdateTask = (id: string, new_status: Status, new_comment: Comment) => void
+// transitions a task to a new status; sessionId is injected server-side
+type UpdateTask = (id: string, new_status: Status, comment: Comment | null, sessionId: string) => void
+
+// creates a new task in backlog assigned to the calling session
+type CreateTask = (input: CreateTaskInput, sessionId: string) => Task
+
+// edits mutable fields without changing status
+type EditTask = (id: string, updates: EditTaskInput) => Task
 ```
 
 each MCP session is treated as a distinct agent instance. the server assigns a `session_id` on connection and uses it to scope `GetCurrentTask` — no explicit agent ID needs to be passed by the caller.
