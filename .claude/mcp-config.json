@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "logbook": {
+      "command": "bun",
+      "args": ["src/mcp/server.ts"],
+      "env": {
+        "LOGBOOK_TASKS_FILE": "./tasks.jsonl",
+        "LOGBOOK_HOOKS_DIR": "./hooks"
+      }
+    }
+  }
+}
