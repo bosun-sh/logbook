@@ -27,7 +27,7 @@ const CreateTaskInputSchema = z.object({
   title:              z.string().min(1),
   definition_of_done: z.string().min(1),
   description:        z.string().min(1),
-  estimation:         z.number().int().positive(),
+  predictedKTokens:   z.number().positive(),
 })
 type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>
 ```
@@ -42,7 +42,7 @@ type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>
 | `title` | `string` | yes |
 | `definition_of_done` | `string` | yes |
 | `description` | `string` | yes |
-| `estimation` | `number` | yes |
+| `predictedKTokens` | `number` | yes |
 
 ### Outputs
 | Case | Response |
@@ -54,7 +54,7 @@ type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>
 
 ### Invariants
 - `session_id` is injected from connection context — used as `assignee.id`.
-- Fibonacci validation is performed inside `createTask`, not the MCP layer.
+- kTokens-to-Fibonacci mapping is performed inside `estimateFromKTokens`, called by `createTask`.
 
 ## Behaviour
 1. Parse input; return -32003 on failure.
@@ -71,11 +71,11 @@ Feature: create_task MCP tool
     Then response contains task with status "backlog"
     And task.assignee.id equals session_id
 
-  Scenario: estimation not Fibonacci → error -32003
-    Given a valid input except estimation is 4
+  Scenario: predictedKTokens exceeds cap → error -32003
+    Given a valid input except predictedKTokens is 21
     When create_task is called
     Then MCP error code -32003 is returned
-    And error data contains message "estimation must be a Fibonacci number"
+    And error data contains message "predicted kilotokens exceed maximum allowed"
 
   Scenario: missing required field → error -32003
     Given input with title as empty string
