@@ -58,6 +58,9 @@ for (const line of lines) {
 
 if (original === null) process.exit(0)
 
+// Guard: don't create a review-of-a-review (circular flow)
+if (original.id.startsWith("review-")) process.exit(0)
+
 const reviewId = `review-${original.id}`
 
 // Idempotency check: skip if a task with the review id already exists
