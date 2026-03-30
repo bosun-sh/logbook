@@ -28,6 +28,7 @@ const CreateTaskInputSchema = z.object({
   definition_of_done: z.string().min(1),
   description:        z.string().min(1),
   predictedKTokens:   z.number().positive(),
+  priority:           z.number().int().min(0).default(0),
 })
 type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>
 ```
@@ -37,12 +38,13 @@ type CreateTaskInput = z.infer<typeof CreateTaskInputSchema>
 ### Inputs
 | Field | Type | Required |
 |-------|------|----------|
-| `project` | `string` | yes |
-| `milestone` | `string` | yes |
-| `title` | `string` | yes |
-| `definition_of_done` | `string` | yes |
-| `description` | `string` | yes |
-| `predictedKTokens` | `number` | yes |
+| `project` | `string` | yes | |
+| `milestone` | `string` | yes | |
+| `title` | `string` | yes | |
+| `definition_of_done` | `string` | yes | |
+| `description` | `string` | yes | |
+| `predictedKTokens` | `number` | yes | |
+| `priority` | `number` | no | integer ≥ 0; defaults to 0 |
 
 ### Outputs
 | Case | Response |

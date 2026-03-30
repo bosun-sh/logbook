@@ -12,7 +12,7 @@ priority: 1
 # MCP Tool: current_task
 
 ## Purpose
-MCP tool that returns the highest-priority (oldest) `in_progress` task for the current session. The session_id is injected by the server — callers pass no parameters.
+MCP tool that resolves the current task for the session via priority chain: own in_progress → unassigned in_progress → orphaned in_progress (dead-session assignee) → highest-priority todo (auto-transitioned). Within each step: priority DESC, then `in_progress_since` ASC. The session_id is injected by the server — callers pass no parameters.
 
 ## Signature
 ```ts
