@@ -67,6 +67,38 @@ you can base your config.yml in the default hooks-which have complete configurat
 
 > note: as mentioned, you can change .ts for any language, but the .yml / .yaml is required for configuration.
 
+#### review flow
+
+when a task is moved to `pending_review`, the built-in `review-spawn` hook automatically creates a review task and spawns a reviewer sub-agent. the reviewer classifies every finding before acting:
+
+```mermaid
+flowchart TD
+    PR[task: pending_review]
+    PR -->|review-spawn hook| SPAWN[review task created\nreviewer agent spawned]
+    SPAWN --> CL{classify findings}
+
+    CL -->|nice-to-have findings| TD["[tech debt] tasks created\nin backlog — silently"]
+
+    CL -->|must-fix found| MF[original → in_progress\nneed_info: must fix before re-submitting]
+    CL -->|consider only| CO[original → in_progress\nneed_info: implementer decides\nfix now or backlog]
+    CL -->|clean| DONE[original → done]
+
+    MF --> RD[review task → done]
+    CO --> RD
+    DONE --> RD
+
+    TD -.->|accompanies any outcome| RD
+```
+
+| finding severity | original task | review task | side effect |
+|-----------------|---------------|-------------|-------------|
+| **must-fix** | `→ in_progress` + `need_info` | `→ done` | — |
+| **consider** | `→ in_progress` + `need_info` | `→ done` | implementer replies: fix now or backlog |
+| **nice-to-have** | unchanged | — | `[tech debt]` backlog task created |
+| **clean** | `→ done` | `→ done` | — |
+
+nice-to-have findings are always handled silently — they never block progress or ping the implementer.
+
 #### why hooks?
 
 hooks don't need to store information from one execution to the other, so the main principle here is: **"execute and forget"**, this way we can focus on the kanban and actual tasks.
