@@ -1,4 +1,4 @@
-import { Effect, type Layer } from "effect"
+import { Effect, Either, type Layer } from "effect"
 import { z } from "zod"
 import { StatusSchema } from "../domain/types.js"
 import { listTasks } from "../task/list-tasks.js"
@@ -15,8 +15,13 @@ export const toolListTasks = (
   const input = InputSchema.parse(rawInput)
   return Effect.runPromise(
     Effect.provide(
-      listTasks(input.status).pipe(Effect.map((tasks) => ({ tasks: tasks as unknown[] }))),
+      Effect.either(
+        listTasks(input.status).pipe(Effect.map((tasks) => ({ tasks: tasks as unknown[] })))
+      ),
       layer
-    ) as Effect.Effect<{ tasks: unknown[] }, never>
-  )
+    )
+  ).then((either) => {
+    if (Either.isLeft(either)) throw either.left
+    return either.right
+  })
 }

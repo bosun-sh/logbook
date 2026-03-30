@@ -21,7 +21,7 @@ import { toolUpdateTask } from "./tool-update-task.js"
 
 interface JsonRpcRequest {
   jsonrpc: "2.0"
-  id: string | number | null
+  id?: string | number | null
   method: string
   params?: unknown
 }
@@ -73,6 +73,112 @@ const internalError = (id: string | number | null, message: string): JsonRpcErro
   errorResponse(id, -32603, message)
 
 // ---------------------------------------------------------------------------
+// MCP tools manifest (static, derived from Zod schemas in each tool file)
+// ---------------------------------------------------------------------------
+
+const STATUS_ENUM = [
+  "backlog",
+  "todo",
+  "need_info",
+  "blocked",
+  "in_progress",
+  "pending_review",
+  "done",
+]
+
+const TOOLS_LIST = [
+  {
+    name: "list_tasks",
+    description: "List tasks, optionally filtered by status. Defaults to in_progress.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        status: {
+          oneOf: [
+            { type: "string", enum: STATUS_ENUM },
+            { type: "string", enum: ["*"] },
+          ],
+          description: "Status filter. Use '*' for all tasks. Defaults to 'in_progress'.",
+        },
+      },
+    },
+  },
+  {
+    name: "current_task",
+    description: "Return the highest-priority in_progress task for this session.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "create_task",
+    description: "Create a new task in backlog assigned to this session.",
+    inputSchema: {
+      type: "object",
+      required: [
+        "project",
+        "milestone",
+        "title",
+        "definition_of_done",
+        "description",
+        "predictedKTokens",
+      ],
+      properties: {
+        project: { type: "string" },
+        milestone: { type: "string" },
+        title: { type: "string" },
+        definition_of_done: { type: "string" },
+        description: { type: "string" },
+        predictedKTokens: { type: "number" },
+      },
+    },
+  },
+  {
+    name: "update_task",
+    description: "Transition a task to a new status, optionally attaching a comment.",
+    inputSchema: {
+      type: "object",
+      required: ["id", "new_status"],
+      properties: {
+        id: { type: "string" },
+        new_status: { type: "string", enum: STATUS_ENUM },
+        comment: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              format: "uuid",
+              description:
+                "Existing comment id — provide only when replying to a need_info comment.",
+            },
+            title: { type: "string" },
+            content: { type: "string" },
+            reply: {
+              type: "string",
+              description: "Reply text — only meaningful when id refers to a need_info comment.",
+            },
+            kind: { type: "string", enum: ["need_info", "regular"] },
+          },
+        },
+      },
+    },
+  },
+  {
+    name: "edit_task",
+    description: "Edit mutable fields of a task without changing its status.",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: {
+        id: { type: "string" },
+        title: { type: "string" },
+        description: { type: "string" },
+        definition_of_done: { type: "string" },
+        predictedKTokens: { type: "number" },
+      },
+    },
+  },
+]
+
+// ---------------------------------------------------------------------------
 // Server bootstrap
 // ---------------------------------------------------------------------------
 
@@ -101,6 +207,19 @@ export const startServer = async (): Promise<void> => {
 
   const dispatch = async (method: string, params: unknown): Promise<unknown> => {
     switch (method) {
+      case "initialize":
+        return {
+          protocolVersion: "2024-11-05",
+          capabilities: { tools: {} },
+          serverInfo: { name: "logbook", version: "1.0.0" },
+        }
+      case "tools/list":
+        return { tools: TOOLS_LIST }
+      case "tools/call": {
+        const p = params as { name: string; arguments?: unknown }
+        const result = await dispatch(p.name, p.arguments ?? {})
+        return { content: [{ type: "text", text: JSON.stringify(result) }] }
+      }
       case "list_tasks":
         return toolListTasks(params, repoLayer)
       case "current_task":
@@ -135,6 +254,12 @@ export const startServer = async (): Promise<void> => {
       request = JSON.parse(trimmed) as JsonRpcRequest
     } catch {
       send(parseError(null))
+      return
+    }
+
+    // MCP notifications have no `id` field — do not send a response
+    if (!("id" in request)) {
+      void dispatch(request.method, request.params ?? {}).catch(() => {})
       return
     }
 
