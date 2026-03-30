@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [0.3.0] — 2026-03-30
+
+### Fixed
+
+- Propagate domain errors with correct error codes (-32001 to -32006) instead of generic -32603
+- Reply cycle in `update_task` now accessible via MCP interface (optional `id` and `reply` fields)
+- Fixed MCP configuration issues
+
+### Added
+
+- OpenCode integration (`opencode.json`)
+- Improved review flow with better error handling
+- New tests for error codes and reply cycle
+
+---
+
 ## [0.2.0] — 2026-03-29 — Initial public release
 
 ### Added

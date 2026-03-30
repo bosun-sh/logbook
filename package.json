@@ -1,6 +1,6 @@
 {
   "name": "@bosun-sh/logbook-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "File-system kanban board MCP server for AI agents",
   "type": "module",
   "bin": {
