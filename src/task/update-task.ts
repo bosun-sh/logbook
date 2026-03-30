@@ -24,7 +24,8 @@ export const updateTask = (
     const task = yield* repo.findById(id)
 
     // Step 2: guard transition (same→same is allowed by guardTransition too)
-    yield* guardTransition(task.status, newStatus)
+    // Pass task id so review tasks can skip pending_review and go directly to done
+    yield* guardTransition(task.status, newStatus, task.id)
 
     // Step 4: reply handling — comment id matches an existing comment
     // Must run before the no-op check because a reply update is meaningful
@@ -36,6 +37,7 @@ export const updateTask = (
           return yield* Effect.fail<TaskError>({
             _tag: "validation_error",
             message: "reply is only valid on need_info comments",
+            context: { commentId: existing.id, commentKind: existing.kind },
           })
         }
         // existing.kind === 'need_info': merge reply and persist, no hook, no status change
@@ -53,18 +55,27 @@ export const updateTask = (
 
     // Step 5: need_info requires a comment
     if (newStatus === "need_info" && comment === null) {
-      return yield* Effect.fail<TaskError>({ _tag: "missing_comment" })
+      return yield* Effect.fail<TaskError>({
+        _tag: "missing_comment",
+        from: task.status,
+        to: newStatus,
+      })
     }
 
     // Step 6: blocked requires a non-empty comment
     if (newStatus === "blocked") {
       if (comment === null) {
-        return yield* Effect.fail<TaskError>({ _tag: "missing_comment" })
+        return yield* Effect.fail<TaskError>({
+          _tag: "missing_comment",
+          from: task.status,
+          to: newStatus,
+        })
       }
       if (comment.content.trim() === "") {
         return yield* Effect.fail<TaskError>({
           _tag: "validation_error",
           message: "blocked requires a non-empty comment",
+          context: { from: task.status, to: newStatus },
         })
       }
     }
@@ -76,6 +87,12 @@ export const updateTask = (
         return yield* Effect.fail<TaskError>({
           _tag: "validation_error",
           message: `blocking comment ${blocking.id} has no reply`,
+          context: {
+            commentId: blocking.id,
+            commentTitle: blocking.title,
+            commentContent: blocking.content,
+            commentTimestamp: blocking.timestamp,
+          },
         })
       }
     }
@@ -91,6 +108,9 @@ export const updateTask = (
           return yield* Effect.fail<TaskError>({
             _tag: "validation_error",
             message: "moving a second task to in_progress requires a justification comment",
+            context: {
+              inProgressTasks: sessionInProgress.map((t) => ({ id: t.id, title: t.title })),
+            },
           })
         }
       }

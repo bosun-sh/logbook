@@ -73,3 +73,19 @@ describe("status-machine / no-op transitions", () => {
     })
   }
 })
+
+describe("status-machine / review task exception", () => {
+  test("in_progress → done succeeds for review task", async () => {
+    await run(guardTransition("in_progress", "done", "review-abc123"))
+  })
+
+  test("in_progress → done fails for non-review task", async () => {
+    const err = await runFail(guardTransition("in_progress", "done", "abc123"))
+    expect(err).toMatchObject({ _tag: "transition_not_allowed", from: "in_progress", to: "done" })
+  })
+
+  test("in_progress → done fails without taskId", async () => {
+    const err = await runFail(guardTransition("in_progress", "done"))
+    expect(err).toMatchObject({ _tag: "transition_not_allowed", from: "in_progress", to: "done" })
+  })
+})
