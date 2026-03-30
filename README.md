@@ -18,11 +18,13 @@ logbook is a file-system based kanban board that uses jsonl files to enter one t
 
 ### tools
 
-- the agent can call `list_tasks(status)` and  receive a list of the tasks in that status _(in_progress by default)_
-- the agent can call `current_task()` and receive the current task _(only task in_progress)_
-- the agent can call `update_task(id, new_status, new_comment)` and update the tasks to the new status adding a comment to justify it
+- the agent can call `list_tasks(status)` and receive a list of the tasks in that status _(in_progress by default)_
+- the agent can call `current_task()` and receive the highest-priority in_progress task for the current session
+- the agent can call `update_task(id, new_status, comment)` to transition a task, add a comment, or reply to a `need_info` blocking comment
+- the agent can call `create_task(input)` to open a new task in `backlog`, passing `predictedKTokens` so the server derives a Fibonacci estimation automatically
+- the agent can call `edit_task(id, updates)` to change mutable fields without altering status
 
-each one of this tools-and more to add-have the sole purpose of removing overload from the agent context, handling the _"heavy load"_ programatically on the mcp server.
+each one of these tools has the sole purpose of removing overload from the agent context, handling the _"heavy load"_ programmatically on the MCP server.
 
 ## architecture
 
@@ -98,7 +100,7 @@ type Task = {
   title: string,
   definition_of_done: string,
   description: string,
-  estimation: number,      // fibonacci scale
+  estimation: number,      // fibonacci number derived from predictedKTokens at creation time
   comments: Comment[],
   assignee: Agent,
   status: Status,
@@ -113,17 +115,80 @@ type ListTasks = (status: Status | '*') => Task[]
 // requires a comment justifying the overlap.
 type GetCurrentTask = () => Task
 
-// transitions a task to a new status; sessionId is injected server-side
-type UpdateTask = (id: string, new_status: Status, comment: Comment | null, sessionId: string) => void
+// transitions a task to a new status; sessionId is injected server-side.
+// to reply to a need_info comment, pass a comment with the existing comment's id and a reply string.
+type UpdateTask = (id: string, new_status: Status, comment: CommentInput | null, sessionId: string) => void
 
-// creates a new task in backlog assigned to the calling session
+type CommentInput = {
+  id?: string,     // existing comment id — only when replying to a need_info comment
+  title: string,
+  content: string,
+  reply?: string,  // reply text — only meaningful when id refers to a need_info comment
+  kind: 'need_info' | 'regular'
+}
+
+// creates a new task in backlog assigned to the calling session.
+// predictedKTokens is mapped to a Fibonacci estimation by the server.
 type CreateTask = (input: CreateTaskInput, sessionId: string) => Task
+
+type CreateTaskInput = {
+  project: string,
+  milestone: string,
+  title: string,
+  definition_of_done: string,
+  description: string,
+  predictedKTokens: number  // positive number; server maps this to a Fibonacci estimation (max 20)
+}
 
 // edits mutable fields without changing status
 type EditTask = (id: string, updates: EditTaskInput) => Task
+
+type EditTaskInput = {
+  title?: string,
+  description?: string,
+  definition_of_done?: string,
+  predictedKTokens?: number  // re-derives estimation if provided
+}
 ```
 
 each MCP session is treated as a distinct agent instance. the server assigns a `session_id` on connection and uses it to scope `GetCurrentTask` — no explicit agent ID needs to be passed by the caller.
+
+## configuration
+
+### environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOGBOOK_TASKS_FILE` | `./tasks.jsonl` | path to the JSONL task store |
+| `LOGBOOK_HOOKS_DIR` | `./hooks` | directory scanned for custom hook definitions |
+
+### client setup
+
+**Claude Code** — add to `.claude/settings.json`:
+
+```json
+{
+  "mcpServers": {
+    "logbook": {
+      "command": "logbook-mcp"
+    }
+  }
+}
+```
+
+**OpenCode** — add to `opencode.json`:
+
+```json
+{
+  "mcp": {
+    "logbook": {
+      "type": "local",
+      "command": ["logbook-mcp"],
+      "enabled": true
+    }
+  }
+}
+```
 
 ## security
 

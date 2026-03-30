@@ -37,7 +37,7 @@ type Task = {
   title: string
   definition_of_done: string
   description: string
-  estimation: number  // fibonacci scale
+  estimation: number  // fibonacci number derived from predictedKTokens at creation time
   comments: Comment[]
   assignee: Agent
   status: Status
@@ -51,9 +51,9 @@ type Task = {
 |------|-----------|-------|
 | `list_tasks` | `(status: Status \| '*') => Task[]` | defaults to `in_progress` |
 | `current_task` | `() => Task` | highest-priority in_progress task for the current session |
-| `update_task` | `(id, new_status, comment, sessionId) => void` | triggers lifecycle hooks; sessionId injected server-side |
-| `create_task` | `(input: CreateTaskInput, sessionId) => Task` | creates task in `backlog` assigned to session |
-| `edit_task` | `(id, updates: EditTaskInput) => Task` | edits mutable fields without status change |
+| `update_task` | `(id, new_status, comment, sessionId) => void` | triggers lifecycle hooks; sessionId injected server-side; pass comment `id` + `reply` to close a `need_info` cycle |
+| `create_task` | `(input: CreateTaskInput, sessionId) => Task` | creates task in `backlog`; input requires `predictedKTokens` (server derives Fibonacci `estimation`) |
+| `edit_task` | `(id, updates: EditTaskInput) => Task` | edits mutable fields without status change; accepts optional `predictedKTokens` to re-derive estimation |
 
 Each MCP session is a distinct agent instance. The server assigns a `session_id` on connection and uses it to scope `current_task` — callers never pass an agent ID explicitly.
 
