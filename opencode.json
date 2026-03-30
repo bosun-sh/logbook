@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "logbook": {
+      "type": "local",
+      "command": ["/Users/jiramirez/.bun/bin/logbook-mcp"],
+      "enabled": true
+    }
+  }
+}
