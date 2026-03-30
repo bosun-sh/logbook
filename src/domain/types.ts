@@ -49,8 +49,17 @@ export type Task = z.infer<typeof TaskSchema>
 // Error tags match Gherkin feature file error names
 export type TaskError =
   | { readonly _tag: "not_found"; readonly taskId: string }
-  | { readonly _tag: "transition_not_allowed"; readonly from: Status; readonly to: Status }
-  | { readonly _tag: "validation_error"; readonly message: string }
-  | { readonly _tag: "missing_comment" }
+  | {
+      readonly _tag: "transition_not_allowed"
+      readonly from: Status
+      readonly to: Status
+      readonly taskId?: string
+    }
+  | {
+      readonly _tag: "validation_error"
+      readonly message: string
+      readonly context?: Record<string, unknown>
+    }
+  | { readonly _tag: "missing_comment"; readonly from?: Status; readonly to?: Status }
   | { readonly _tag: "conflict"; readonly taskId: string }
   | { readonly _tag: "no_current_task" }

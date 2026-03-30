@@ -22,6 +22,7 @@ import type { Status, TaskError } from "./types.js"
 export const guardTransition = (
   from: Status,
   to: Status,
+  taskId?: string,
 ): Effect.Effect<void, TaskError>
 ```
 
@@ -32,12 +33,14 @@ export const guardTransition = (
 |-------|------|
 | `from` | `Status` |
 | `to` | `Status` |
+| `taskId` | `string?` — optional; when prefixed with `review-`, allows `in_progress → done` |
 
 ### Outputs
 | Case | Return |
 |------|--------|
 | Transition is in the allowed set | `Effect.succeed(void)` |
 | `from === to` (same→same) | `Effect.succeed(void)` — no-op |
+| `in_progress → done` with review task id | `Effect.succeed(void)` |
 | Transition is not allowed | `Effect.fail({ _tag: 'transition_not_allowed', from, to })` |
 
 ### Allowed Transitions (complete graph)
@@ -71,6 +74,7 @@ export const guardTransition = (
 - All 7 same→same transitions (`backlog→backlog`, etc.) succeed.
 - Any transition not in the allowed set fails — even if not in the explicitly forbidden list above.
 - `done` is a terminal state — no outbound transitions are allowed.
+- **Exception**: review tasks (id prefixed `review-`) may go directly from `in_progress` to `done`.
 
 ## Behaviour
 
