@@ -91,6 +91,6 @@ const path = await import("node:path")
 const projectRoot = path.dirname(process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl")
 const mcpConfig = path.join(projectRoot, ".claude/mcp-config.json")
 execSync(
-  `claude --model claude-haiku-4-5-20251001 --mcp-config ${mcpConfig} --agent reviewer --task "review task ${reviewId}"`,
+  `claude --model claude-haiku-4-5-20251001 --mcp-config ${mcpConfig} --agent reviewer -p "review task ${reviewId}"`,
   { stdio: "inherit", env: { ...process.env, LOGBOOK_TASKS_FILE: dataFile } }
 )
