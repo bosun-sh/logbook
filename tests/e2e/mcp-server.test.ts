@@ -103,6 +103,12 @@ let tmpDir = ""
 let tasksFile = ""
 let server: ServerSession | null = null
 
+/** Returns the active server session; throws if setup() was not called. */
+const getServer = (): ServerSession => {
+  if (server === null) throw new Error("server not initialized — call setup() first")
+  return server
+}
+
 const setup = async (): Promise<void> => {
   tmpDir = await mkdtemp(join(tmpdir(), "logbook-mcp-e2e-"))
   tasksFile = join(tmpDir, "tasks.jsonl")
@@ -140,7 +146,7 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   test("unknown method → error code -32601", async () => {
     await setup()
-    const res = await server!.send({ jsonrpc: "2.0", id: 1, method: "unknown" })
+    const res = await getServer().send({ jsonrpc: "2.0", id: 1, method: "unknown" })
     expect(isError(res)).toBe(true)
     expect((res as JsonRpcError).error.code).toBe(-32601)
   })
@@ -150,7 +156,7 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   test("malformed JSON → error code -32700", async () => {
     await setup()
-    const res = await server!.sendRaw("not json\n")
+    const res = await getServer().sendRaw("not json\n")
     expect(isError(res)).toBe(true)
     expect((res as JsonRpcError).error.code).toBe(-32700)
   })
@@ -160,7 +166,7 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   test("create_task with valid params → task with id and status backlog", async () => {
     await setup()
-    const res = await server!.send({
+    const res = await getServer().send({
       jsonrpc: "2.0",
       id: 3,
       method: "create_task",
@@ -177,7 +183,7 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   test("create_task with missing field → error code -32602", async () => {
     await setup()
-    const res = await server!.send({
+    const res = await getServer().send({
       jsonrpc: "2.0",
       id: 4,
       method: "create_task",
@@ -193,13 +199,13 @@ describe("MCP server / JSON-RPC e2e", () => {
   test("list_tasks({ status: 'backlog' }) returns the created task", async () => {
     await setup()
     // Create a task first
-    await server!.send({
+    await getServer().send({
       jsonrpc: "2.0",
       id: 5,
       method: "create_task",
       params: validCreateParams,
     })
-    const res = await server!.send({
+    const res = await getServer().send({
       jsonrpc: "2.0",
       id: 6,
       method: "list_tasks",
@@ -215,14 +221,19 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   test("list_tasks({ status: '*' }) returns all tasks", async () => {
     await setup()
-    await server!.send({ jsonrpc: "2.0", id: 7, method: "create_task", params: validCreateParams })
-    await server!.send({
+    await getServer().send({
+      jsonrpc: "2.0",
+      id: 7,
+      method: "create_task",
+      params: validCreateParams,
+    })
+    await getServer().send({
       jsonrpc: "2.0",
       id: 8,
       method: "create_task",
       params: { ...validCreateParams, title: "Task 2" },
     })
-    const res = await server!.send({
+    const res = await getServer().send({
       jsonrpc: "2.0",
       id: 9,
       method: "list_tasks",
@@ -236,14 +247,11 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   // 7. current_task — fresh session with no in_progress task
   // -------------------------------------------------------------------------
-  test("current_task on fresh session → error containing no_current_task tag", async () => {
+  test("current_task on fresh session → error code -32006", async () => {
     await setup()
-    const res = await server!.send({ jsonrpc: "2.0", id: 10, method: "current_task" })
+    const res = await getServer().send({ jsonrpc: "2.0", id: 10, method: "current_task" })
     expect(isError(res)).toBe(true)
-    const err = (res as JsonRpcError).error
-    // The server propagates this as an internal error (-32603) with the task
-    // error tag embedded in the message string.
-    expect(err.message).toContain("no_current_task")
+    expect((res as JsonRpcError).error.code).toBe(-32006)
   })
 
   // -------------------------------------------------------------------------
@@ -252,7 +260,7 @@ describe("MCP server / JSON-RPC e2e", () => {
   test("update_task transitions status correctly", async () => {
     await setup()
     // Create
-    const createRes = await server!.send({
+    const createRes = await getServer().send({
       jsonrpc: "2.0",
       id: 11,
       method: "create_task",
@@ -262,7 +270,7 @@ describe("MCP server / JSON-RPC e2e", () => {
     const taskId = ((createRes as JsonRpcSuccess).result as { task: { id: string } }).task.id
 
     // Move to todo
-    const toTodo = await server!.send({
+    const toTodo = await getServer().send({
       jsonrpc: "2.0",
       id: 12,
       method: "update_task",
@@ -272,7 +280,7 @@ describe("MCP server / JSON-RPC e2e", () => {
     expect((toTodo as JsonRpcSuccess).result).toEqual({ ok: true })
 
     // Move to in_progress
-    const toInProgress = await server!.send({
+    const toInProgress = await getServer().send({
       jsonrpc: "2.0",
       id: 13,
       method: "update_task",
@@ -282,7 +290,7 @@ describe("MCP server / JSON-RPC e2e", () => {
     expect((toInProgress as JsonRpcSuccess).result).toEqual({ ok: true })
 
     // Verify via list_tasks
-    const listRes = await server!.send({
+    const listRes = await getServer().send({
       jsonrpc: "2.0",
       id: 14,
       method: "list_tasks",
@@ -298,7 +306,7 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   test("edit_task updates the task title", async () => {
     await setup()
-    const createRes = await server!.send({
+    const createRes = await getServer().send({
       jsonrpc: "2.0",
       id: 15,
       method: "create_task",
@@ -307,7 +315,7 @@ describe("MCP server / JSON-RPC e2e", () => {
     expect(isSuccess(createRes)).toBe(true)
     const taskId = ((createRes as JsonRpcSuccess).result as { task: { id: string } }).task.id
 
-    const editRes = await server!.send({
+    const editRes = await getServer().send({
       jsonrpc: "2.0",
       id: 16,
       method: "edit_task",
@@ -321,18 +329,15 @@ describe("MCP server / JSON-RPC e2e", () => {
   // -------------------------------------------------------------------------
   // 10. update_task — unknown id → not_found error
   // -------------------------------------------------------------------------
-  test("update_task with unknown id → error containing not_found tag", async () => {
+  test("update_task with unknown id → error code -32001", async () => {
     await setup()
-    const res = await server!.send({
+    const res = await getServer().send({
       jsonrpc: "2.0",
       id: 17,
       method: "update_task",
       params: { id: "nonexistent-id-xyz", new_status: "todo" },
     })
     expect(isError(res)).toBe(true)
-    const err = (res as JsonRpcError).error
-    // The server propagates this as an internal error (-32603) with the task
-    // error tag embedded in the message string.
-    expect(err.message).toContain("not_found")
+    expect((res as JsonRpcError).error.code).toBe(-32001)
   })
 })

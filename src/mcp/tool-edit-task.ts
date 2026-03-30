@@ -1,4 +1,4 @@
-import { Effect, type Layer } from "effect"
+import { Effect, Either, type Layer } from "effect"
 import { z } from "zod"
 import type { EditTaskInput } from "../task/edit-task.js"
 import { editTask } from "../task/edit-task.js"
@@ -28,8 +28,11 @@ export const toolEditTask = (
 
   return Effect.runPromise(
     Effect.provide(
-      editTask(id, updates).pipe(Effect.map((task) => ({ task }))),
+      Effect.either(editTask(id, updates).pipe(Effect.map((task) => ({ task })))),
       layer
-    ) as Effect.Effect<{ task: unknown }, never>
-  )
+    )
+  ).then((either) => {
+    if (Either.isLeft(either)) throw either.left
+    return either.right
+  })
 }

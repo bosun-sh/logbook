@@ -3,7 +3,7 @@ import { HookRunner } from "@logbook/hook/ports.js"
 import { toolUpdateTask } from "@logbook/mcp/tool-update-task.js"
 import { TaskRepository } from "@logbook/task/ports.js"
 import { Effect, Layer } from "effect"
-import { makeTask } from "../../helpers/factories.js"
+import { makeComment, makeTask } from "../../helpers/factories.js"
 import { InMemoryTaskRepository } from "../../helpers/in-memory-task-repository.js"
 import { SpyHookRunner } from "../../helpers/spy-hook-runner.js"
 
@@ -98,6 +98,65 @@ describe("toolUpdateTask / Zod validation rejects", () => {
 
   test("missing new_status → throws ZodError", async () => {
     await expectThrows(() => toolUpdateTask({ id: "task-1" }, "s1", layer))
+  })
+})
+
+describe("toolUpdateTask / reply cycle", () => {
+  test("reply to need_info comment clears the blocking flag", async () => {
+    const commentId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    const needInfoComment = makeComment({ id: commentId, kind: "need_info", reply: "" })
+    const task = await seedTask({
+      status: "need_info",
+      comments: [needInfoComment],
+      in_progress_since: new Date(),
+    })
+    layer = makeCurrentLayer()
+    // Reply to the existing comment by passing its id
+    await toolUpdateTask(
+      {
+        id: task.id,
+        new_status: "need_info",
+        comment: {
+          id: commentId,
+          title: needInfoComment.title,
+          content: needInfoComment.content,
+          reply: "Answered.",
+          kind: "need_info",
+        },
+      },
+      task.assignee.id,
+      layer
+    )
+    // Now transitioning out of need_info should succeed
+    const result = await toolUpdateTask(
+      { id: task.id, new_status: "in_progress" },
+      task.assignee.id,
+      layer
+    )
+    expect(result).toEqual({ ok: true })
+  })
+
+  test("new comment on need_info transition generates a fresh id", async () => {
+    const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
+    layer = makeCurrentLayer()
+    await toolUpdateTask(
+      {
+        id: task.id,
+        new_status: "need_info",
+        comment: { title: "Question", content: "What?", kind: "need_info" },
+      },
+      task.assignee.id,
+      layer
+    )
+    const updated = await Effect.runPromise(
+      Effect.provide(
+        Effect.flatMap(TaskRepository, (r) => r.findById(task.id)),
+        makeCurrentLayer()
+      ) as Effect.Effect<ReturnType<typeof makeTask>, never>
+    )
+    expect(updated.comments.length).toBe(1)
+    expect(typeof updated.comments[0]?.id).toBe("string")
+    expect(updated.comments[0]?.id).not.toBe("")
   })
 })
 

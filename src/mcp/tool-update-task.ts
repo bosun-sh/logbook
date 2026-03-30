@@ -1,4 +1,4 @@
-import { Effect, type Layer } from "effect"
+import { Effect, Either, type Layer } from "effect"
 import { z } from "zod"
 import { CommentKindSchema, StatusSchema } from "../domain/types.js"
 import type { HookRunner } from "../hook/ports.js"
@@ -7,8 +7,10 @@ import { updateTask } from "../task/update-task.js"
 
 const CommentInputSchema = z
   .object({
+    id: z.string().uuid().optional(), // provided only when replying to an existing comment
     title: z.string().min(1),
     content: z.string(),
+    reply: z.string().optional(), // reply text; only meaningful when id is provided
     kind: CommentKindSchema,
   })
   .optional()
@@ -27,21 +29,26 @@ export const toolUpdateTask = (
   const input = InputSchema.parse(rawInput)
   const comment = input.comment
     ? {
-        id: crypto.randomUUID(),
+        id: input.comment.id ?? crypto.randomUUID(),
         timestamp: new Date(),
         title: input.comment.title,
         content: input.comment.content,
-        reply: "",
+        reply: input.comment.reply ?? "",
         kind: input.comment.kind,
       }
     : null
 
   return Effect.runPromise(
     Effect.provide(
-      updateTask(input.id, input.new_status, comment, sessionId).pipe(
-        Effect.map(() => ({ ok: true }))
+      Effect.either(
+        updateTask(input.id, input.new_status, comment, sessionId).pipe(
+          Effect.map(() => ({ ok: true }))
+        )
       ),
       layer
-    ) as Effect.Effect<{ ok: boolean }, never>
-  )
+    )
+  ).then((either) => {
+    if (Either.isLeft(either)) throw either.left
+    return either.right
+  })
 }

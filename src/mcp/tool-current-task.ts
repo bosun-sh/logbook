@@ -1,4 +1,4 @@
-import { Effect, type Layer } from "effect"
+import { Effect, Either, type Layer } from "effect"
 import { currentTask } from "../task/current-task.js"
 import type { TaskRepository } from "../task/ports.js"
 
@@ -8,8 +8,11 @@ export const toolCurrentTask = (
 ): Promise<{ task: unknown }> => {
   return Effect.runPromise(
     Effect.provide(
-      currentTask(sessionId).pipe(Effect.map((task) => ({ task }))),
+      Effect.either(currentTask(sessionId).pipe(Effect.map((task) => ({ task })))),
       layer
-    ) as Effect.Effect<{ task: unknown }, never>
-  )
+    )
+  ).then((either) => {
+    if (Either.isLeft(either)) throw either.left
+    return either.right
+  })
 }
