@@ -1,11 +1,1 @@
-{
-  "mcpServers": {
-    "logbook": {
-      "command": "logbook-mcp",
-      "env": {
-        "LOGBOOK_TASKS_FILE": "${workspaceFolder}/tasks.jsonl",
-        "LOGBOOK_HOOKS_DIR": "${workspaceFolder}/hooks"
-      }
-    }
-  }
-}
+{}

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "logbook": {
+      "type": "stdio",
+      "command": "/Users/jiramirez/.bun/bin/logbook-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}
