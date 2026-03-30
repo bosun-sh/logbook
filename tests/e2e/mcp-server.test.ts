@@ -36,6 +36,9 @@ interface ServerSession {
   send: (req: JsonRpcRequest) => Promise<JsonRpcResponse>
   sendRaw: (line: string) => Promise<JsonRpcResponse>
   kill: () => void
+  /** Hard-kills the process without closing stdin (simulates a crash — no deregistration). */
+  killHard: () => void
+  exited: Promise<number>
 }
 
 const SERVER_ENTRY = join(import.meta.dir, "../../src/mcp/server.ts")
@@ -89,7 +92,11 @@ const spawnServer = (tasksFile: string, hooksDir: string): ServerSession => {
     proc.kill()
   }
 
-  return { send, sendRaw, kill }
+  const killHard = (): void => {
+    proc.kill(9)
+  }
+
+  return { send, sendRaw, kill, killHard, exited: proc.exited }
 }
 
 const isError = (r: JsonRpcResponse): r is JsonRpcError => "error" in r
@@ -339,5 +346,58 @@ describe("MCP server / JSON-RPC e2e", () => {
     })
     expect(isError(res)).toBe(true)
     expect((res as JsonRpcError).error.code).toBe(-32001)
+  })
+
+  // -------------------------------------------------------------------------
+  // 11. Orphan recovery — restarted agent reclaims the in_progress task
+  // -------------------------------------------------------------------------
+  test("orphan recovery: server B claims in_progress task from crashed server A", async () => {
+    const orphanDir = await mkdtemp(join(tmpdir(), "logbook-orphan-"))
+    const orphanTasksFile = join(orphanDir, "tasks.jsonl")
+    const hooksDir = join(orphanDir, "hooks")
+    await writeFile(orphanTasksFile, "", "utf8")
+
+    const serverA = spawnServer(orphanTasksFile, hooksDir)
+
+    // Create task and move it to in_progress on server A
+    const createRes = await serverA.send({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "create_task",
+      params: validCreateParams,
+    })
+    expect(isSuccess(createRes)).toBe(true)
+    const taskId = ((createRes as JsonRpcSuccess).result as { task: { id: string } }).task.id
+
+    await serverA.send({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "update_task",
+      params: { id: taskId, new_status: "todo" },
+    })
+    await serverA.send({
+      jsonrpc: "2.0",
+      id: 3,
+      method: "update_task",
+      params: { id: taskId, new_status: "in_progress" },
+    })
+
+    // Simulate crash: hard-kill without stdin close so sessions.json retains the dead PID
+    serverA.killHard()
+    await serverA.exited
+
+    // Spawn server B pointing at the same tasks file
+    const serverB = spawnServer(orphanTasksFile, hooksDir)
+
+    const res = await serverB.send({ jsonrpc: "2.0", id: 4, method: "current_task" })
+    serverB.kill()
+
+    await rm(orphanDir, { recursive: true, force: true })
+
+    expect(isSuccess(res)).toBe(true)
+    const result = (res as JsonRpcSuccess).result as {
+      task: { id: string; assignee: { id: string } }
+    }
+    expect(result.task.id).toBe(taskId)
   })
 })

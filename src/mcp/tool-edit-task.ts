@@ -10,6 +10,7 @@ const InputSchema = z.object({
   description: z.string().optional(),
   definition_of_done: z.string().optional(),
   predictedKTokens: z.number().positive().optional(),
+  priority: z.number().int().min(0).optional(),
 })
 
 export const toolEditTask = (
@@ -25,6 +26,7 @@ export const toolEditTask = (
   if (parsed.definition_of_done !== undefined)
     updates.definition_of_done = parsed.definition_of_done
   if (parsed.predictedKTokens !== undefined) updates.predictedKTokens = parsed.predictedKTokens
+  if (parsed.priority !== undefined) updates.priority = parsed.priority
 
   return Effect.runPromise(
     Effect.provide(

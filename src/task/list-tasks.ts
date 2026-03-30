@@ -9,4 +9,8 @@ import { TaskRepository } from "./ports.js"
 export const listTasks = (
   status: Status | "*"
 ): Effect.Effect<readonly Task[], TaskError, TaskRepository> =>
-  Effect.flatMap(TaskRepository, (repo) => repo.findByStatus(status))
+  Effect.flatMap(TaskRepository, (repo) =>
+    Effect.map(repo.findByStatus(status), (tasks) =>
+      [...tasks].sort((a, b) => b.priority - a.priority)
+    )
+  )

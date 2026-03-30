@@ -58,7 +58,7 @@ describe("createTask / happy path", () => {
 
   test("assignee.id equals sessionId", async () => {
     const task = await runWith(createTask(validInput, "session-abc"), repo)
-    expect(task.assignee.id).toBe("session-abc")
+    expect(task.assignee!.id).toBe("session-abc")
   })
 
   test("task is retrievable via findByStatus('backlog')", async () => {

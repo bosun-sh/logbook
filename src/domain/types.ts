@@ -40,9 +40,10 @@ export const TaskSchema = z.object({
   description: z.string().min(1),
   estimation: z.number().int().positive(),
   comments: z.array(CommentSchema),
-  assignee: AgentSchema,
+  assignee: AgentSchema.optional(),
   status: StatusSchema,
   in_progress_since: z.coerce.date().optional(),
+  priority: z.number().int().min(0).default(0),
 })
 export type Task = z.infer<typeof TaskSchema>
 

@@ -37,7 +37,7 @@ describe("toolUpdateTask / happy path", () => {
     layer = makeCurrentLayer()
     const result = await toolUpdateTask(
       { id: task.id, new_status: "backlog" },
-      task.assignee.id,
+      task.assignee!.id,
       layer
     )
     expect(result).toEqual({ ok: true })
@@ -52,7 +52,7 @@ describe("toolUpdateTask / happy path", () => {
         new_status: "need_info",
         comment: { title: "Blocking question", content: "What does this do?", kind: "need_info" },
       },
-      task.assignee.id,
+      task.assignee!.id,
       layer
     )
     expect(spy.calls.length).toBe(1)
@@ -62,7 +62,7 @@ describe("toolUpdateTask / happy path", () => {
   test("todo → in_progress succeeds and updates task", async () => {
     const task = await seedTask({ status: "todo" })
     layer = makeCurrentLayer()
-    await toolUpdateTask({ id: task.id, new_status: "in_progress" }, task.assignee.id, layer)
+    await toolUpdateTask({ id: task.id, new_status: "in_progress" }, task.assignee!.id, layer)
     const updated = await Effect.runPromise(
       Effect.provide(
         Effect.flatMap(TaskRepository, (r) => r.findById(task.id)),
@@ -124,13 +124,13 @@ describe("toolUpdateTask / reply cycle", () => {
           kind: "need_info",
         },
       },
-      task.assignee.id,
+      task.assignee!.id,
       layer
     )
     // Now transitioning out of need_info should succeed
     const result = await toolUpdateTask(
       { id: task.id, new_status: "in_progress" },
-      task.assignee.id,
+      task.assignee!.id,
       layer
     )
     expect(result).toEqual({ ok: true })
@@ -145,7 +145,7 @@ describe("toolUpdateTask / reply cycle", () => {
         new_status: "need_info",
         comment: { title: "Question", content: "What?", kind: "need_info" },
       },
-      task.assignee.id,
+      task.assignee!.id,
       layer
     )
     const updated = await Effect.runPromise(
@@ -171,7 +171,7 @@ describe("toolUpdateTask / domain errors bubble as rejections", () => {
     const task = await seedTask({ status: "backlog" })
     layer = makeCurrentLayer()
     await expect(
-      toolUpdateTask({ id: task.id, new_status: "done" }, task.assignee.id, layer)
+      toolUpdateTask({ id: task.id, new_status: "done" }, task.assignee!.id, layer)
     ).rejects.toBeDefined()
   })
 })
