@@ -27,6 +27,7 @@ const EditTaskInputSchema = z.object({
   description:        z.string().min(1).optional(),
   definition_of_done: z.string().min(1).optional(),
   predictedKTokens:   z.number().positive().optional(),
+  priority:           z.number().int().min(0).optional(),
 })
 type EditTaskMcpInput = z.infer<typeof EditTaskInputSchema>
 ```
@@ -41,6 +42,7 @@ type EditTaskMcpInput = z.infer<typeof EditTaskInputSchema>
 | `description` | `string` | no | |
 | `definition_of_done` | `string` | no | |
 | `predictedKTokens` | `number` | no | Must be within cap |
+| `priority` | `number` | no | integer ≥ 0; re-assigns priority |
 
 ### Outputs
 | Case | Response |

@@ -39,9 +39,10 @@ type Task = {
   description: string
   estimation: number  // fibonacci number derived from predictedKTokens at creation time
   comments: Comment[]
-  assignee: Agent
+  assignee?: Agent          // optional — set when a session claims the task
   status: Status
   in_progress_since?: Date  // set on entry to in_progress; drives FIFO in current_task
+  priority: number          // integer ≥ 0; higher = more urgent; defaults to 0
 }
 ```
 

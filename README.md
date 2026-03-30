@@ -181,7 +181,8 @@ type CreateTaskInput = {
   title: string,
   definition_of_done: string,
   description: string,
-  predictedKTokens: number  // positive number; server maps this to a Fibonacci estimation (max 20)
+  predictedKTokens: number,  // positive number; server maps this to a Fibonacci estimation (max 20)
+  priority?: number           // integer ≥ 0; defaults to 0
 }
 
 // edits mutable fields without changing status
@@ -191,7 +192,8 @@ type EditTaskInput = {
   title?: string,
   description?: string,
   definition_of_done?: string,
-  predictedKTokens?: number  // re-derives estimation if provided
+  predictedKTokens?: number,  // re-derives estimation if provided
+  priority?: number            // integer ≥ 0; re-assigns priority if provided
 }
 ```
 

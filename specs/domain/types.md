@@ -53,9 +53,10 @@ export const TaskSchema = z.object({
   description:        z.string().min(1),
   estimation:         z.number().int().positive(),
   comments:           z.array(CommentSchema),
-  assignee:           AgentSchema,
+  assignee:           AgentSchema.optional(),
   status:             StatusSchema,
   in_progress_since:  z.coerce.date().optional(),
+  priority:           z.number().int().min(0),
 })
 export type Task = z.infer<typeof TaskSchema>
 
@@ -78,7 +79,7 @@ export type TaskError =
 | `CommentKind` | `'need_info' \| 'regular'` | drives reply cycle logic |
 | `Comment` | object | `content` and `reply` allow empty strings |
 | `Agent` | object | `id` is the session_id assigned at connect |
-| `Task` | object | `in_progress_since` optional — set only when status is `in_progress` |
+| `Task` | object | `assignee` optional; `in_progress_since` optional — set only when status is `in_progress`; `priority` integer ≥ 0 |
 | `TaskError` | discriminated union on `_tag` | 6 variants |
 
 ### TaskError Variants

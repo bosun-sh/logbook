@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [0.4.0] — 2026-03-30
+
+### Added
+
+- **Priority-based task selection** — `Task` gains a `priority: number` field (integer ≥ 0, default 0). `current_task` resolves via a deterministic priority chain: own in_progress → unassigned in_progress → orphaned in_progress (dead-session assignee) → highest-priority todo (auto-transitioned) → `no_current_task` error. Within each step tasks are ordered by priority DESC, tie-broken by `in_progress_since` ASC.
+- **Session liveness tracking** — new `SessionRegistry` interface + `PidSessionRegistry` implementation tracks agent sessions via `process.kill(pid, 0)`. Dead-session tasks are automatically reclaimed by the next available agent.
+- **Orphan recovery** — tasks assigned to crashed sessions are detected and re-claimed rather than left stuck in `in_progress`.
+- **Classification-first reviewer flow** — reviewer agent now classifies all findings before acting: must-fix blocks shipping, consider lets the implementer decide, nice-to-have creates silent `[tech debt]` backlog tasks. Reviewer always closes its own review task.
+- **API docs + client setup** — README now documents all TypeScript contracts (`CommentInput`, `CreateTaskInput`, `EditTaskInput`) and includes setup snippets for Claude Code and OpenCode.
+
+### Changed
+
+- `assignee` field on `Task` is now optional — tasks may exist without an assignee until claimed.
+- `list_tasks` results are now sorted by `priority DESC`.
+- Agent instructions are injected into the MCP `initialize` response (model selection guidance based on `predictedKTokens`).
+
+---
+
 ## [0.3.0] — 2026-03-30
 
 ### Fixed
