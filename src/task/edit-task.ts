@@ -8,6 +8,7 @@ export interface EditTaskInput {
   description?: string
   definition_of_done?: string
   predictedKTokens?: number
+  priority?: number
 }
 
 /**

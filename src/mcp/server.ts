@@ -1,12 +1,14 @@
 #!/usr/bin/env bun
 import { createInterface } from "node:readline"
-import { Layer } from "effect"
+import { Effect, Layer } from "effect"
 import { executeHooks } from "../hook/hook-executor.js"
 import type { HookEvent } from "../hook/ports.js"
 import { HookRunner } from "../hook/ports.js"
 import { loadHookConfigs } from "../infra/hook-config-loader.js"
 import { JsonlTaskRepository } from "../infra/jsonl-task-repository.js"
+import { PidSessionRegistry } from "../infra/pid-session-registry.js"
 import { TaskRepository } from "../task/ports.js"
+import { SessionRegistry } from "../task/session-registry.js"
 import { taskErrorToMcpError } from "./error-codes.js"
 import { newSessionId } from "./session.js"
 import { toolCreateTask } from "./tool-create-task.js"
@@ -73,6 +75,32 @@ const internalError = (id: string | number | null, message: string): JsonRpcErro
   errorResponse(id, -32603, message)
 
 // ---------------------------------------------------------------------------
+// Agent instructions injected into the MCP initialize response
+// ---------------------------------------------------------------------------
+
+const AGENT_INSTRUCTIONS = `\
+You are connected to the logbook MCP server. You MUST use it to track all tasks in this session.
+
+## Session start
+Call \`current_task\` immediately. If it returns \`no_current_task\`, pick a task from \`list_tasks\` with status \`todo\` and move it to \`in_progress\`, or create a new one with \`create_task\` then advance it: backlog → todo → in_progress.
+
+## Task lifecycle
+backlog → todo → in_progress → pending_review → done
+Side-exits from in_progress: → need_info (awaiting clarification) or → blocked (external dependency). Return to in_progress once resolved.
+Always attach a comment when moving to pending_review.
+
+## Model selection when spawning sub-agents
+Base the choice on the \`predictedKTokens\` you set at task creation:
+
+| predictedKTokens | model                      | use for                          |
+|------------------|----------------------------|----------------------------------|
+| ≤ 5              | claude-haiku-4-5-20251001  | rote / mechanical tasks          |
+| 6 – 15           | claude-sonnet-4-6          | moderate complexity              |
+| 16+              | claude-sonnet-4-6          | large but well-scoped tasks      |
+
+Override to \`claude-opus-4-6\` regardless of size when the task involves: architectural design, security analysis, creative problem-solving, or complex multi-step reasoning.`
+
+// ---------------------------------------------------------------------------
 // MCP tools manifest (static, derived from Zod schemas in each tool file)
 // ---------------------------------------------------------------------------
 
@@ -105,12 +133,14 @@ const TOOLS_LIST = [
   },
   {
     name: "current_task",
-    description: "Return the highest-priority in_progress task for this session.",
+    description:
+      "Return the highest-priority in_progress task for this session. Call this at session start before doing any work.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "create_task",
-    description: "Create a new task in backlog assigned to this session.",
+    description:
+      "Create a new task in backlog. Set predictedKTokens to your estimated context use — this drives the Fibonacci estimation and model selection for sub-agents.",
     inputSchema: {
       type: "object",
       required: [
@@ -133,7 +163,8 @@ const TOOLS_LIST = [
   },
   {
     name: "update_task",
-    description: "Transition a task to a new status, optionally attaching a comment.",
+    description:
+      "Transition a task's status. Attach a comment when moving to pending_review. Use need_info or blocked for side-exits from in_progress.",
     inputSchema: {
       type: "object",
       required: ["id", "new_status"],
@@ -188,18 +219,20 @@ export const startServer = async (): Promise<void> => {
 
   const configs = await loadHookConfigs(hooksDir)
   const repo = new JsonlTaskRepository(tasksFile)
+  const registry = new PidSessionRegistry(tasksFile)
 
   const hookRunnerImpl: HookRunner = {
     run: (event: HookEvent) => executeHooks(event, configs),
   }
 
   const repoLayer: Layer.Layer<TaskRepository> = Layer.succeed(TaskRepository, repo)
-  const fullLayer: Layer.Layer<TaskRepository | HookRunner> = Layer.merge(
-    repoLayer,
-    Layer.succeed(HookRunner, hookRunnerImpl)
+  const fullLayer: Layer.Layer<TaskRepository | HookRunner | SessionRegistry> = Layer.merge(
+    Layer.merge(repoLayer, Layer.succeed(HookRunner, hookRunnerImpl)),
+    Layer.succeed(SessionRegistry, registry)
   )
 
   const sessionId = newSessionId()
+  await Effect.runPromise(registry.register(sessionId, process.pid))
 
   // ---------------------------------------------------------------------------
   // Tool dispatch
@@ -212,6 +245,7 @@ export const startServer = async (): Promise<void> => {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
           serverInfo: { name: "logbook", version: "1.0.0" },
+          instructions: AGENT_INSTRUCTIONS,
         }
       case "tools/list":
         return { tools: TOOLS_LIST }
@@ -223,7 +257,7 @@ export const startServer = async (): Promise<void> => {
       case "list_tasks":
         return toolListTasks(params, repoLayer)
       case "current_task":
-        return toolCurrentTask(sessionId, repoLayer)
+        return toolCurrentTask(sessionId, fullLayer)
       case "update_task":
         return toolUpdateTask(params, sessionId, fullLayer)
       case "create_task":
@@ -290,7 +324,7 @@ export const startServer = async (): Promise<void> => {
   })
 
   rl.on("close", () => {
-    process.exit(0)
+    void Effect.runPromise(registry.deregister(sessionId)).then(() => process.exit(0))
   })
 }
 

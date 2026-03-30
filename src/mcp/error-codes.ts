@@ -157,7 +157,7 @@ const buildValidationErrorMessage = (
     if (commentTitle) message += `  - title: ${commentTitle}\n`
     if (commentContent) {
       const truncated =
-        commentContent.length > 50 ? commentContent.slice(0, 50) + "..." : commentContent
+        commentContent.length > 50 ? `${commentContent.slice(0, 50)}...` : commentContent
       message += `  - content: ${truncated}\n`
     }
     if (commentTimestamp) message += `  - created: ${commentTimestamp.toISOString()}\n`

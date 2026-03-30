@@ -101,7 +101,7 @@ export const updateTask = (
     if (newStatus === "in_progress") {
       const inProgressTasks = yield* repo.findByStatus("in_progress")
       const sessionInProgress = inProgressTasks.filter(
-        (t) => t.assignee.id === sessionId && t.id !== task.id
+        (t) => t.assignee?.id === sessionId && t.id !== task.id
       )
       if (sessionInProgress.length > 0) {
         if (comment === null || comment.content.trim() === "") {

@@ -32,5 +32,6 @@ export const makeTask = (overrides: Partial<Task> = {}): Task => ({
   comments: [],
   assignee: makeAgent(),
   status: "backlog" as Status,
+  priority: 0,
   ...overrides,
 })

@@ -10,6 +10,7 @@ const InputSchema = z.object({
   definition_of_done: z.string().min(1),
   description: z.string().min(1),
   predictedKTokens: z.number().positive(),
+  priority: z.number().int().min(0).default(0),
 })
 
 export const toolCreateTask = (

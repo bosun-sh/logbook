@@ -19,7 +19,15 @@ logbook is a file-system based kanban board that uses jsonl files to enter one t
 ### tools
 
 - the agent can call `list_tasks(status)` and receive a list of the tasks in that status _(in_progress by default)_
-- the agent can call `current_task()` and receive the highest-priority in_progress task for the current session
+- the agent can call `current_task()` and receive the highest-priority in_progress task for the current session, resolved via this priority chain:
+
+  | priority | condition | action |
+  |----------|-----------|--------|
+  | 1 | task already assigned to this session | return highest priority (tie-break: oldest) |
+  | 2 | unassigned `in_progress` task | claim highest priority, return |
+  | 3 | `in_progress` task with a dead-session assignee | claim highest priority, return |
+  | 4 | `todo` task | auto-transition highest priority to `in_progress`, claim, return |
+  | 5 | nothing available | fail with `no_current_task` |
 - the agent can call `update_task(id, new_status, comment)` to transition a task, add a comment, or reply to a `need_info` blocking comment
 - the agent can call `create_task(input)` to open a new task in `backlog`, passing `predictedKTokens` so the server derives a Fibonacci estimation automatically
 - the agent can call `edit_task(id, updates)` to change mutable fields without altering status
@@ -136,13 +144,17 @@ type Task = {
   comments: Comment[],
   assignee: Agent,
   status: Status,
-  in_progress_since?: Date // set when task enters in_progress; drives FIFO ordering in current_task
+  in_progress_since?: Date // set when task enters in_progress; used as tie-breaker in current_task
+  priority: number         // integer ≥ 0; higher = more urgent; defaults to 0
 }
 
-// status defaults to 'in_progress'
+// status defaults to 'in_progress'; results ordered by priority DESC
 type ListTasks = (status: Status | '*') => Task[]
 
-// returns the highest-priority in_progress task for the current session.
+// returns the highest-priority task for the current session using a priority chain:
+// 1. own in_progress → 2. unassigned in_progress → 3. orphaned in_progress
+// (dead-session assignee) → 4. highest-priority todo (auto-transitioned) → 5. no_current_task error.
+// within each step, tasks are ordered by priority DESC, tie-broken by in_progress_since ASC.
 // if a second task is moved to in_progress, a built-in hook fires and
 // requires a comment justifying the overlap.
 type GetCurrentTask = () => Task

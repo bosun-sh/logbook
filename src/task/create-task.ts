@@ -10,6 +10,7 @@ export interface CreateTaskInput {
   definition_of_done: string
   description: string
   predictedKTokens: number
+  priority?: number
 }
 
 /**
@@ -64,6 +65,7 @@ export const createTask = (
         description: "",
       },
       status: "backlog" as const,
+      priority: input.priority ?? 0,
     }
 
     return Effect.flatMap(TaskRepository, (repo) => repo.save(task)).pipe(Effect.map(() => task))
