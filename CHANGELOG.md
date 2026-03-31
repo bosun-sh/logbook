@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [1.0.0] — 2026-03-31
+
+### Added
+
+- **Structured JSON logger** — new `Logger` abstraction emits JSON lines to stderr. All `console.warn` calls replaced with `logger.warn`. Controlled via `LOGBOOK_LOG_LEVEL` env var (`debug|info|warn|error`, default `warn`).
+- **Unrecognized hook key warnings** — `hook-config-loader` now warns via the structured logger when a `config.yml` contains keys outside the known schema, surfacing typos early.
+- **Project and milestone filters for `list_tasks`** — callers can now pass `project` and `milestone` query parameters to scope task listing without loading the full store.
+- **`logbook-mcp init` scaffold command** — running `logbook-mcp init` creates `tasks.jsonl`, the `hooks/` directory tree, and emits client config snippets for Claude Code and OpenCode.
+- **`--version` / `-v` flags** — prints the package version and exits.
+- **`--help` / `-h` flags** — prints command usage, available subcommands, and all environment variables.
+- **`quickstart.md`** — zero-to-running onboarding guide: install, init, wire into an MCP client, and verify the first task.
+- **README: install section** — `npm install -g @bosun-sh/logbook-mcp` command and link to `quickstart.md`.
+- **README: agent session walkthrough** — end-to-end narrative showing how an agent picks up a task, works through it, and closes the loop.
+- **README: API stability guarantees** — documents the stability contract: tools and their input/output shapes are stable within a major version; internal module paths are not part of the public API.
+
+### Changed
+
+- CLI entry point (`server.ts`) consolidates all pre-start flag handling (`init`, `--version`, `--help`) inside a single `handleCliFlags()` function for clarity.
+- Biome config excludes `.claude/` directory from linting/formatting scope.
+
+---
+
 ## [0.4.0] — 2026-03-30
 
 ### Added

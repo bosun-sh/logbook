@@ -58,6 +58,14 @@ type Task = {
 
 Each MCP session is a distinct agent instance. The server assigns a `session_id` on connection and uses it to scope `current_task` — callers never pass an agent ID explicitly.
 
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LOGBOOK_TASKS_FILE` | `./tasks.jsonl` | path to the JSONL task store |
+| `LOGBOOK_HOOKS_DIR` | `./hooks` | directory scanned for custom hook definitions |
+| `LOGBOOK_LOG_LEVEL` | `warn` | structured logger level: `debug`, `info`, `warn`, or `error` |
+
 ## Hooks System
 
 Hooks execute before or after task lifecycle events. They are **stateless** — execute and forget.
