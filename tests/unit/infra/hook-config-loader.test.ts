@@ -138,6 +138,97 @@ describe("loadHookConfigs / multiple hooks", () => {
   })
 })
 
+describe("loadHookConfigs / unrecognized keys warning", () => {
+  test("emits warning for unrecognized key but still loads the hook", async () => {
+    const hooksDir = await newTempDir()
+    const hookDir = join(hooksDir, "unrecognized_hook")
+    await mkdir(hookDir)
+    await writeFile(
+      join(hookDir, "config.yml"),
+      `event: task.status_changed\nunknown_field: some_value\n`
+    )
+    await writeFile(join(hookDir, "script.ts"), `// noop`)
+
+    const warnCalls: string[] = []
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => {
+      warnCalls.push(args.join(" "))
+    }
+
+    try {
+      const result = await loadHookConfigs(hooksDir)
+      expect(result.length).toBe(1)
+      expect(result[0]?.event).toBe("task.status_changed")
+      // Should have warned about the unrecognized key
+      const warnings = warnCalls.filter((w) => w.includes("unrecognized key"))
+      expect(warnings.length).toBe(1)
+      expect(warnings[0]).toContain("unrecognized_hook")
+      expect(warnings[0]).toContain("unknown_field")
+      expect(warnings[0]).toContain("event")
+      expect(warnings[0]).toContain("condition")
+      expect(warnings[0]).toContain("timeout_ms")
+    } finally {
+      console.warn = originalWarn
+    }
+  })
+
+  test("does not warn when all keys are recognized", async () => {
+    const hooksDir = await newTempDir()
+    const hookDir = join(hooksDir, "valid_hook")
+    await mkdir(hookDir)
+    await writeFile(
+      join(hookDir, "config.yml"),
+      `event: task.status_changed\ncondition: "test"\ntimeout_ms: 5000\n`
+    )
+    await writeFile(join(hookDir, "script.ts"), `// noop`)
+
+    const warnCalls: string[] = []
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => {
+      warnCalls.push(args.join(" "))
+    }
+
+    try {
+      const result = await loadHookConfigs(hooksDir)
+      expect(result.length).toBe(1)
+      // Should have no unrecognized key warnings
+      const warnings = warnCalls.filter((w) => w.includes("unrecognized key"))
+      expect(warnings.length).toBe(0)
+    } finally {
+      console.warn = originalWarn
+    }
+  })
+
+  test("warns on multiple unrecognized keys", async () => {
+    const hooksDir = await newTempDir()
+    const hookDir = join(hooksDir, "multi_unrecognized_hook")
+    await mkdir(hookDir)
+    await writeFile(
+      join(hookDir, "config.yml"),
+      `event: task.status_changed\ntypo_field: value\nanother_typo: 123\n`
+    )
+    await writeFile(join(hookDir, "script.ts"), `// noop`)
+
+    const warnCalls: string[] = []
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => {
+      warnCalls.push(args.join(" "))
+    }
+
+    try {
+      const result = await loadHookConfigs(hooksDir)
+      expect(result.length).toBe(1)
+      // Should have warned about both unrecognized keys
+      const warnings = warnCalls.filter((w) => w.includes("unrecognized key"))
+      expect(warnings.length).toBe(2)
+      expect(warnings.some((w) => w.includes("typo_field"))).toBe(true)
+      expect(warnings.some((w) => w.includes("another_typo"))).toBe(true)
+    } finally {
+      console.warn = originalWarn
+    }
+  })
+})
+
 describe("parseSimpleYaml behavior (via loadHookConfigs)", () => {
   test("handles single-quoted string values", async () => {
     const hooksDir = await newTempDir()
