@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { createInterface } from "node:readline"
 import { Effect, Layer } from "effect"
+import { runInit } from "../cli/init.js"
 import { executeHooks } from "../hook/hook-executor.js"
 import type { HookEvent } from "../hook/ports.js"
 import { HookRunner } from "../hook/ports.js"
@@ -369,5 +370,10 @@ const isZodError = (e: unknown): e is ZodError =>
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
+
+if (process.argv[2] === "init") {
+  await runInit()
+  process.exit(0)
+}
 
 await startServer()
