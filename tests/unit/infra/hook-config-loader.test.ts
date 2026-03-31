@@ -149,10 +149,11 @@ describe("loadHookConfigs / unrecognized keys warning", () => {
     )
     await writeFile(join(hookDir, "script.ts"), `// noop`)
 
-    const warnCalls: string[] = []
-    const originalWarn = console.warn
-    console.warn = (...args: unknown[]) => {
-      warnCalls.push(args.join(" "))
+    const stderrLines: string[] = []
+    const originalWrite = process.stderr.write.bind(process.stderr)
+    process.stderr.write = (chunk: unknown, ..._rest: unknown[]): boolean => {
+      stderrLines.push(String(chunk))
+      return true
     }
 
     try {
@@ -160,7 +161,7 @@ describe("loadHookConfigs / unrecognized keys warning", () => {
       expect(result.length).toBe(1)
       expect(result[0]?.event).toBe("task.status_changed")
       // Should have warned about the unrecognized key
-      const warnings = warnCalls.filter((w) => w.includes("unrecognized key"))
+      const warnings = stderrLines.filter((w) => w.includes("unrecognized key"))
       expect(warnings.length).toBe(1)
       expect(warnings[0]).toContain("unrecognized_hook")
       expect(warnings[0]).toContain("unknown_field")
@@ -168,7 +169,7 @@ describe("loadHookConfigs / unrecognized keys warning", () => {
       expect(warnings[0]).toContain("condition")
       expect(warnings[0]).toContain("timeout_ms")
     } finally {
-      console.warn = originalWarn
+      process.stderr.write = originalWrite
     }
   })
 
@@ -182,20 +183,21 @@ describe("loadHookConfigs / unrecognized keys warning", () => {
     )
     await writeFile(join(hookDir, "script.ts"), `// noop`)
 
-    const warnCalls: string[] = []
-    const originalWarn = console.warn
-    console.warn = (...args: unknown[]) => {
-      warnCalls.push(args.join(" "))
+    const stderrLines: string[] = []
+    const originalWrite = process.stderr.write.bind(process.stderr)
+    process.stderr.write = (chunk: unknown, ..._rest: unknown[]): boolean => {
+      stderrLines.push(String(chunk))
+      return true
     }
 
     try {
       const result = await loadHookConfigs(hooksDir)
       expect(result.length).toBe(1)
       // Should have no unrecognized key warnings
-      const warnings = warnCalls.filter((w) => w.includes("unrecognized key"))
+      const warnings = stderrLines.filter((w) => w.includes("unrecognized key"))
       expect(warnings.length).toBe(0)
     } finally {
-      console.warn = originalWarn
+      process.stderr.write = originalWrite
     }
   })
 
@@ -209,22 +211,23 @@ describe("loadHookConfigs / unrecognized keys warning", () => {
     )
     await writeFile(join(hookDir, "script.ts"), `// noop`)
 
-    const warnCalls: string[] = []
-    const originalWarn = console.warn
-    console.warn = (...args: unknown[]) => {
-      warnCalls.push(args.join(" "))
+    const stderrLines: string[] = []
+    const originalWrite = process.stderr.write.bind(process.stderr)
+    process.stderr.write = (chunk: unknown, ..._rest: unknown[]): boolean => {
+      stderrLines.push(String(chunk))
+      return true
     }
 
     try {
       const result = await loadHookConfigs(hooksDir)
       expect(result.length).toBe(1)
       // Should have warned about both unrecognized keys
-      const warnings = warnCalls.filter((w) => w.includes("unrecognized key"))
+      const warnings = stderrLines.filter((w) => w.includes("unrecognized key"))
       expect(warnings.length).toBe(2)
       expect(warnings.some((w) => w.includes("typo_field"))).toBe(true)
       expect(warnings.some((w) => w.includes("another_typo"))).toBe(true)
     } finally {
-      console.warn = originalWarn
+      process.stderr.write = originalWrite
     }
   })
 })
