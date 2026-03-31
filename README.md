@@ -36,6 +36,71 @@ logbook is a file-system based kanban board that uses jsonl files to enter one t
 
 each one of these tools has the sole purpose of removing overload from the agent context, handling the _"heavy load"_ programmatically on the MCP server.
 
+## walkthrough
+
+a complete agent session from start to done:
+
+**1. agent starts — get current task**
+
+```
+current_task()
+→ { id: "abc-123", title: "implement login endpoint", status: "in_progress", ... }
+```
+
+**2. agent needs clarification — blocks on a question**
+
+```
+update_task("abc-123", "need_info", {
+  title: "which auth provider?",
+  content: "should i use jwt or session-based auth? the spec doesn't say.",
+  kind: "need_info"
+})
+→ hook fires: user is notified with the comment
+```
+
+**3. user replies — task unblocked**
+
+```
+update_task("abc-123", "in_progress", {
+  id: "<comment-id>",
+  reply: "use jwt, see the auth spec in docs/auth.md",
+  title: "jwt confirmed",
+  content: "jwt confirmed",
+  kind: "need_info"
+})
+→ task returns to in_progress
+```
+
+**4. agent finishes — submits for review**
+
+```
+update_task("abc-123", "pending_review", {
+  title: "implementation complete",
+  content: "jwt login endpoint implemented, tests passing",
+  kind: "regular"
+})
+→ review-spawn hook fires: review task created, reviewer agent spawned
+```
+
+**5. reviewer approves — task closed**
+
+```
+# reviewer agent calls:
+current_task()  → gets the review task
+update_task("<review-task-id>", "done")
+→ original task abc-123 → done automatically
+```
+
+### how the agent knows logbook exists
+
+add the logbook MCP server to your AI client config (see [configuration](#configuration)), then include these instructions in your agent's system prompt or `CLAUDE.md`:
+
+```
+You are connected to the logbook MCP server. Call current_task() immediately at session start.
+```
+
+the full system prompt is injected automatically when the MCP server connects.
+
 ## architecture
 
 - **runtime**: Bun / TypeScript
