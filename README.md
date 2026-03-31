@@ -2,6 +2,8 @@
 
 logbook is a kanban board implementation for autonomous agentic development, focusing on autonomous development and context window management.
 
+→ **new here?** see [quickstart.md](quickstart.md) to get running in 2 minutes.
+
 ## problem
 
 ai agents changed the way software teams worked, and with specification-driven development we encounter a rift: **agents don't manage their tasks as we do**.
