@@ -250,3 +250,12 @@ hook `config.yml` files support an optional `condition` field (e.g. `"new_status
 - if a condition throws or is malformed, the hook is skipped silently and execution continues — it fails safe.
 
 the security model here is the same as running a `Makefile` or a `.husky/` script: filesystem-level trust. as long as you control what goes into your hooks directory, you are safe.
+
+## stability
+
+logbook follows semantic versioning. here is what is stable at v1.0.0:
+
+- **mcp api**: tool names and required parameters will not change within a major version. optional parameters may be added.
+- **jsonl format**: the serialized `Task` type in `tasks.jsonl` is stable. new optional fields may be added; existing fields will not be removed or renamed within a major version.
+- **hook config schema**: the `event`, `condition`, and `timeout_ms` keys in `config.yml` are stable. new optional keys may be added.
+- **breaking changes**: any breaking change will be preceded by a deprecation notice in the prior minor release and documented in `CHANGELOG.md`.
