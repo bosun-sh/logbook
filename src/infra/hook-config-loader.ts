@@ -4,6 +4,8 @@ import { z } from "zod"
 import type { HookConfig } from "../hook/hook-executor.js"
 import { logger } from "./logger.js"
 
+const KNOWN_KEYS = ["event", "condition", "timeout_ms"] as const
+
 const HookConfigFileSchema = z.object({
   event: z.string(),
   condition: z.string().optional(),
@@ -71,6 +73,16 @@ export const loadHookConfigs = async (hooksDir: string): Promise<HookConfig[]> =
       if (!validated.success) {
         logger.warn("invalid hook config", { path: configPath, error: validated.error.message })
         continue
+      }
+      // Warn on unrecognized keys
+      const parsedKeys = Object.keys(parsed)
+      for (const key of parsedKeys) {
+        if (!(KNOWN_KEYS as readonly string[]).includes(key)) {
+          const validKeysStr = KNOWN_KEYS.join(", ")
+          console.warn(
+            `[hook-config-loader] hook "${entry}": unrecognized key "${key}" (valid keys: ${validKeysStr})`
+          )
+        }
       }
       const script = await findScript(hookDir)
       if (script === undefined) {
