@@ -201,6 +201,10 @@ each MCP session is treated as a distinct agent instance. the server assigns a `
 
 ## configuration
 
+### quick setup
+
+run `logbook-mcp init` in your project directory to scaffold `tasks.jsonl`, `hooks/`, and print the config snippets for your AI client.
+
 ### environment variables
 
 | Variable | Default | Description |
