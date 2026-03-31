@@ -34,20 +34,20 @@ beforeEach(() => {
 describe("listTasks", () => {
   test("returns only tasks matching status", async () => {
     await seed(repo, { status: "backlog" }, { status: "todo" }, { status: "in_progress" })
-    const result = await runWith(listTasks("backlog"), repo)
+    const result = await runWith(listTasks({ status: "backlog" }), repo)
     expect(result.length).toBe(1)
     expect(result[0]?.status).toBe("backlog")
   })
 
   test("returns [] when no tasks match", async () => {
     await seed(repo, { status: "backlog" })
-    const result = await runWith(listTasks("done"), repo)
+    const result = await runWith(listTasks({ status: "done" }), repo)
     expect(result).toEqual([])
   })
 
   test("'*' returns all tasks across all statuses", async () => {
     await seed(repo, { status: "backlog" }, { status: "todo" }, { status: "done" })
-    const result = await runWith(listTasks("*"), repo)
+    const result = await runWith(listTasks({ status: "*" }), repo)
     expect(result.length).toBe(3)
   })
 
@@ -58,8 +58,65 @@ describe("listTasks", () => {
       { status: "in_progress", in_progress_since: new Date() },
       { status: "backlog" }
     )
-    const result = await runWith(listTasks("in_progress"), repo)
+    const result = await runWith(listTasks({ status: "in_progress" }), repo)
     expect(result.length).toBe(2)
     expect(result.every((t) => t.status === "in_progress")).toBe(true)
+  })
+
+  test("project filter returns only tasks from the given project", async () => {
+    await seed(
+      repo,
+      { status: "backlog", project: "alpha" },
+      { status: "backlog", project: "beta" },
+      { status: "backlog", project: "alpha" }
+    )
+    const result = await runWith(listTasks({ status: "backlog", project: "alpha" }), repo)
+    expect(result.length).toBe(2)
+    expect(result.every((t) => t.project === "alpha")).toBe(true)
+  })
+
+  test("milestone filter returns only tasks from the given milestone", async () => {
+    await seed(
+      repo,
+      { status: "backlog", milestone: "m1" },
+      { status: "backlog", milestone: "m2" },
+      { status: "backlog", milestone: "m1" }
+    )
+    const result = await runWith(listTasks({ status: "backlog", milestone: "m1" }), repo)
+    expect(result.length).toBe(2)
+    expect(result.every((t) => t.milestone === "m1")).toBe(true)
+  })
+
+  test("project + milestone filters compose correctly", async () => {
+    await seed(
+      repo,
+      { status: "backlog", project: "alpha", milestone: "m1" },
+      { status: "backlog", project: "alpha", milestone: "m2" },
+      { status: "backlog", project: "beta", milestone: "m1" }
+    )
+    const result = await runWith(
+      listTasks({ status: "backlog", project: "alpha", milestone: "m1" }),
+      repo
+    )
+    expect(result.length).toBe(1)
+    expect(result[0]?.project).toBe("alpha")
+    expect(result[0]?.milestone).toBe("m1")
+  })
+
+  test("filter with no matching tasks returns empty array", async () => {
+    await seed(repo, { status: "backlog", project: "alpha" })
+    const result = await runWith(listTasks({ status: "backlog", project: "nonexistent" }), repo)
+    expect(result).toEqual([])
+  })
+
+  test("priority order is preserved when project filter is active", async () => {
+    await seed(
+      repo,
+      { status: "backlog", project: "alpha", priority: 1 },
+      { status: "backlog", project: "alpha", priority: 5 },
+      { status: "backlog", project: "alpha", priority: 3 }
+    )
+    const result = await runWith(listTasks({ status: "backlog", project: "alpha" }), repo)
+    expect(result.map((t) => t.priority)).toEqual([5, 3, 1])
   })
 })
