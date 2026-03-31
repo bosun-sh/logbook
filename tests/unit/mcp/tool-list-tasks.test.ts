@@ -69,6 +69,38 @@ describe("toolListTasks / happy path", () => {
       (result.tasks as Record<string, unknown>[]).every((t) => t.status === "in_progress")
     ).toBe(true)
   })
+
+  test("project filter narrows results to matching project", async () => {
+    await seed({ status: "backlog", project: "alpha" }, { status: "backlog", project: "beta" })
+    const result = await toolListTasks({ status: "backlog", project: "alpha" }, layer)
+    expect(result.tasks.length).toBe(1)
+    const task = result.tasks[0] as Record<string, unknown>
+    expect(task.project).toBe("alpha")
+  })
+
+  test("milestone filter narrows results to matching milestone", async () => {
+    await seed({ status: "backlog", milestone: "m1" }, { status: "backlog", milestone: "m2" })
+    const result = await toolListTasks({ status: "backlog", milestone: "m1" }, layer)
+    expect(result.tasks.length).toBe(1)
+    const task = result.tasks[0] as Record<string, unknown>
+    expect(task.milestone).toBe("m1")
+  })
+
+  test("project and milestone filters compose", async () => {
+    await seed(
+      { status: "backlog", project: "alpha", milestone: "m1" },
+      { status: "backlog", project: "alpha", milestone: "m2" },
+      { status: "backlog", project: "beta", milestone: "m1" }
+    )
+    const result = await toolListTasks(
+      { status: "backlog", project: "alpha", milestone: "m1" },
+      layer
+    )
+    expect(result.tasks.length).toBe(1)
+    const task = result.tasks[0] as Record<string, unknown>
+    expect(task.project).toBe("alpha")
+    expect(task.milestone).toBe("m1")
+  })
 })
 
 const expectThrows = async (fn: () => unknown) => {
@@ -88,5 +120,13 @@ describe("toolListTasks / Zod validation rejects", () => {
 
   test("status as number → throws ZodError", async () => {
     await expectThrows(() => toolListTasks({ status: 123 }, layer))
+  })
+
+  test("project as non-string → throws ZodError", async () => {
+    await expectThrows(() => toolListTasks({ project: 42 }, layer))
+  })
+
+  test("milestone as non-string → throws ZodError", async () => {
+    await expectThrows(() => toolListTasks({ milestone: true }, layer))
   })
 })

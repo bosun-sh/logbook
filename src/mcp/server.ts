@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { createInterface } from "node:readline"
 import { Effect, Layer } from "effect"
+import { runInit } from "../cli/init.js"
 import { executeHooks } from "../hook/hook-executor.js"
 import type { HookEvent } from "../hook/ports.js"
 import { HookRunner } from "../hook/ports.js"
@@ -367,7 +368,46 @@ const isZodError = (e: unknown): e is ZodError =>
   (e as { name: string }).name === "ZodError"
 
 // ---------------------------------------------------------------------------
+// CLI flag handling (before server startup)
+// ---------------------------------------------------------------------------
+
+const handleCliFlags = async (): Promise<void> => {
+  const arg = process.argv[2]
+
+  if (arg === "init") {
+    await runInit()
+    process.exit(0)
+  }
+
+  if (arg === "--version" || arg === "-v") {
+    const pkg = await import("../../package.json", { with: { type: "json" } })
+    process.stdout.write(`${pkg.default.version}\n`)
+    process.exit(0)
+  }
+
+  if (arg === "--help" || arg === "-h") {
+    process.stdout.write(`logbook-mcp [command]
+
+Commands:
+  init        Scaffold tasks.jsonl, hooks/, and emit client config snippets
+  (default)   Start the MCP server (stdio transport)
+
+Options:
+  --version   Print version
+  --help      Show this help
+
+Environment:
+  LOGBOOK_TASKS_FILE   Path to JSONL task store (default: ./tasks.jsonl)
+  LOGBOOK_HOOKS_DIR    Directory for hook definitions (default: ./hooks)
+  LOGBOOK_LOG_LEVEL    Log level: debug|info|warn|error (default: warn)
+`)
+    process.exit(0)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
+await handleCliFlags()
 await startServer()
