@@ -295,6 +295,7 @@ run `logbook-mcp init` in your project directory to scaffold `tasks.jsonl`, `hoo
 |----------|---------|-------------|
 | `LOGBOOK_TASKS_FILE` | `./tasks.jsonl` | path to the JSONL task store |
 | `LOGBOOK_HOOKS_DIR` | `./hooks` | directory scanned for custom hook definitions |
+| `LOGBOOK_LOG_LEVEL` | `warn` | structured logger level: `debug`, `info`, `warn`, or `error` |
 
 ### gitignore
 
