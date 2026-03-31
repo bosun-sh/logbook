@@ -131,4 +131,29 @@ describe("logger / stderr integration", () => {
     expect(entry.level).toBe("warn")
     expect(entry.msg).toBe("stderr test")
   })
+
+  test("exported logger.error writes to process.stderr", async () => {
+    const { logger } = await import("@logbook/infra/logger.js")
+    logger.error("error test")
+    const line = captured.find((c) => c.includes("error test"))
+    expect(line).toBeDefined()
+    const entry = JSON.parse((line as string).trim()) as Record<string, unknown>
+    expect(entry.level).toBe("error")
+    expect(entry.msg).toBe("error test")
+  })
+
+  test("exported logger.debug is suppressed at default warn threshold", async () => {
+    const { logger } = await import("@logbook/infra/logger.js")
+    logger.debug("debug suppressed")
+    const line = captured.find((c) => c.includes("debug suppressed"))
+    expect(line).toBeUndefined()
+  })
+
+  test("exported logger.info is suppressed at default warn threshold", async () => {
+    const { logger } = await import("@logbook/infra/logger.js")
+    logger.info("info suppressed")
+    const line = captured.find((c) => c.includes("info suppressed"))
+    expect(line).toBeUndefined()
+  })
 })
+
