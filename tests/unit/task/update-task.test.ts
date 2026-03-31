@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, test } from "bun:test"
 import type { Status } from "@logbook/domain/types.js"
 import { HookRunner } from "@logbook/hook/ports.js"
 import { TaskRepository } from "@logbook/task/ports.js"
+import { SessionRegistry } from "@logbook/task/session-registry.js"
 import { updateTask } from "@logbook/task/update-task.js"
 import { Effect, Layer } from "effect"
 import { makeAgent, makeComment, makeTask } from "../../helpers/factories.js"
+import { InMemorySessionRegistry } from "../../helpers/in-memory-session-registry.js"
 import { InMemoryTaskRepository } from "../../helpers/in-memory-task-repository.js"
 import { SpyHookRunner } from "../../helpers/spy-hook-runner.js"
 
@@ -12,15 +14,21 @@ type AnyError = { _tag: string; [k: string]: unknown }
 
 let repo: InMemoryTaskRepository
 let spy: SpyHookRunner
+let sessionRegistry: InMemorySessionRegistry
 
 const makeLayer = () =>
-  Layer.merge(Layer.succeed(TaskRepository, repo), Layer.succeed(HookRunner, spy))
+  Layer.mergeAll(
+    Layer.succeed(TaskRepository, repo),
+    Layer.succeed(HookRunner, spy),
+    Layer.succeed(SessionRegistry, sessionRegistry)
+  )
 
-const run = <A>(effect: Effect.Effect<A, unknown, TaskRepository | HookRunner>): Promise<A> =>
-  Effect.runPromise(Effect.provide(effect, makeLayer()) as Effect.Effect<A, never>)
+const run = <A>(
+  effect: Effect.Effect<A, unknown, TaskRepository | HookRunner | SessionRegistry>
+): Promise<A> => Effect.runPromise(Effect.provide(effect, makeLayer()) as Effect.Effect<A, never>)
 
 const runFail = <A>(
-  effect: Effect.Effect<A, unknown, TaskRepository | HookRunner>
+  effect: Effect.Effect<A, unknown, TaskRepository | HookRunner | SessionRegistry>
 ): Promise<AnyError> =>
   Effect.runPromise(
     Effect.provide(
@@ -43,6 +51,7 @@ const seedTask = async (overrides: Parameters<typeof makeTask>[0] = {}) => {
 beforeEach(() => {
   repo = new InMemoryTaskRepository()
   spy = new SpyHookRunner()
+  sessionRegistry = new InMemorySessionRegistry()
 })
 
 // ──────────────────────────────────────────
@@ -82,9 +91,9 @@ describe("updateTask / valid transitions", () => {
         })
         const withComment = { ...task, comments: [repliedComment] }
         await run(Effect.flatMap(TaskRepository, (r) => r.update(withComment)))
-        await run(updateTask(task.id, to, null, task.assignee!.id))
+        await run(updateTask(task.id, to, null, task.assignee?.id ?? ""))
       } else {
-        await run(updateTask(task.id, to, comment, task.assignee!.id))
+        await run(updateTask(task.id, to, comment, task.assignee?.id ?? ""))
       }
       const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
       expect(updated.status).toBe(to)
@@ -110,7 +119,7 @@ describe("updateTask / invalid transitions", () => {
   for (const [from, to] of invalid) {
     test(`${from} → ${to}: transition_not_allowed, task unchanged, no hook`, async () => {
       const task = await seedTask({ status: from })
-      const err = await runFail(updateTask(task.id, to, null, task.assignee!.id))
+      const err = await runFail(updateTask(task.id, to, null, task.assignee?.id ?? ""))
       expect(err._tag).toBe("transition_not_allowed")
       const unchanged = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
       expect(unchanged.status).toBe(from)
@@ -125,7 +134,7 @@ describe("updateTask / invalid transitions", () => {
 describe("updateTask / no-op", () => {
   test("blocked → blocked: succeeds, no hook", async () => {
     const task = await seedTask({ status: "blocked" })
-    await run(updateTask(task.id, "blocked", null, task.assignee!.id))
+    await run(updateTask(task.id, "blocked", null, task.assignee?.id ?? ""))
     expect(spy.calls.length).toBe(0)
   })
 })
@@ -146,14 +155,14 @@ describe("updateTask / not_found", () => {
 describe("updateTask / need_info comment rules", () => {
   test("→ need_info without comment → missing_comment", async () => {
     const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
-    const err = await runFail(updateTask(task.id, "need_info", null, task.assignee!.id))
+    const err = await runFail(updateTask(task.id, "need_info", null, task.assignee?.id ?? ""))
     expect(err._tag).toBe("missing_comment")
   })
 
   test("→ need_info with comment → fires hook with new_status: need_info", async () => {
     const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
     const comment = makeComment({ kind: "need_info", content: "blocking question" })
-    await run(updateTask(task.id, "need_info", comment, task.assignee!.id))
+    await run(updateTask(task.id, "need_info", comment, task.assignee?.id ?? ""))
     expect(spy.calls.length).toBe(1)
     expect(spy.calls[0]?.new_status).toBe("need_info")
   })
@@ -165,21 +174,21 @@ describe("updateTask / need_info comment rules", () => {
 describe("updateTask / blocked comment rules", () => {
   test("→ blocked without comment → missing_comment", async () => {
     const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
-    const err = await runFail(updateTask(task.id, "blocked", null, task.assignee!.id))
+    const err = await runFail(updateTask(task.id, "blocked", null, task.assignee?.id ?? ""))
     expect(err._tag).toBe("missing_comment")
   })
 
   test("→ blocked with empty content → validation_error", async () => {
     const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
     const comment = makeComment({ content: "" })
-    const err = await runFail(updateTask(task.id, "blocked", comment, task.assignee!.id))
+    const err = await runFail(updateTask(task.id, "blocked", comment, task.assignee?.id ?? ""))
     expect(err).toMatchObject({ _tag: "validation_error" })
   })
 
   test("→ blocked with non-empty content → succeeds", async () => {
     const task = await seedTask({ status: "in_progress", in_progress_since: new Date() })
     const comment = makeComment({ content: "Waiting on API key" })
-    await run(updateTask(task.id, "blocked", comment, task.assignee!.id))
+    await run(updateTask(task.id, "blocked", comment, task.assignee?.id ?? ""))
     const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
     expect(updated.status).toBe("blocked")
   })
@@ -198,7 +207,7 @@ describe("updateTask / need_info reply cycle", () => {
       reply: "the answer",
       content: "what?",
     })
-    await run(updateTask(task.id, "need_info", replyComment, task.assignee!.id))
+    await run(updateTask(task.id, "need_info", replyComment, task.assignee?.id ?? ""))
     const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
     expect(updated.comments.find((c) => c.id === "c-1")?.reply).toBe("the answer")
     expect(updated.status).toBe("need_info")
@@ -207,7 +216,7 @@ describe("updateTask / need_info reply cycle", () => {
   test("need_info→in_progress when blocking comment has empty reply → validation_error", async () => {
     const blocking = makeComment({ id: "c-1", kind: "need_info", content: "what?", reply: "" })
     const task = await seedTask({ status: "need_info", comments: [blocking] })
-    const err = await runFail(updateTask(task.id, "in_progress", null, task.assignee!.id))
+    const err = await runFail(updateTask(task.id, "in_progress", null, task.assignee?.id ?? ""))
     expect(err).toMatchObject({
       _tag: "validation_error",
       message: "blocking comment c-1 has no reply",
@@ -217,7 +226,7 @@ describe("updateTask / need_info reply cycle", () => {
   test("need_info→in_progress after reply populated → succeeds", async () => {
     const blocking = makeComment({ id: "c-1", kind: "need_info", content: "what?", reply: "done" })
     const task = await seedTask({ status: "need_info", comments: [blocking] })
-    await run(updateTask(task.id, "in_progress", null, task.assignee!.id))
+    await run(updateTask(task.id, "in_progress", null, task.assignee?.id ?? ""))
     const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
     expect(updated.status).toBe("in_progress")
   })
@@ -230,7 +239,9 @@ describe("updateTask / need_info reply cycle", () => {
       comments: [regularComment],
     })
     const withReply = makeComment({ id: "c-2", kind: "regular", content: "note", reply: "oops" })
-    const err = await runFail(updateTask(task.id, "in_progress", withReply, task.assignee!.id))
+    const err = await runFail(
+      updateTask(task.id, "in_progress", withReply, task.assignee?.id ?? "")
+    )
     expect(err).toMatchObject({
       _tag: "validation_error",
       message: "reply is only valid on need_info comments",
@@ -263,8 +274,54 @@ describe("updateTask / concurrent in_progress", () => {
 
   test("first task (no existing in_progress) → succeeds with no extra constraint", async () => {
     const task = await seedTask({ status: "todo" })
-    await run(updateTask(task.id, "in_progress", null, task.assignee!.id))
+    await run(updateTask(task.id, "in_progress", null, task.assignee?.id ?? ""))
     const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
     expect(updated.status).toBe("in_progress")
+  })
+})
+
+// ──────────────────────────────────────────
+// Step 8b: ownership check
+// ──────────────────────────────────────────
+describe("updateTask / ownership check", () => {
+  test("task assigned to current session → transition succeeds", async () => {
+    const agent = makeAgent({ id: "session-owner" })
+    const task = await seedTask({ status: "todo", assignee: agent })
+    sessionRegistry.setAlive("session-owner", true)
+    await run(updateTask(task.id, "in_progress", null, "session-owner"))
+    const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
+    expect(updated.status).toBe("in_progress")
+  })
+
+  test("task assigned to dead foreign session → transition succeeds, assignee updated", async () => {
+    const agent = makeAgent({ id: "session-dead" })
+    const task = await seedTask({ status: "todo", assignee: agent })
+    sessionRegistry.setAlive("session-dead", false)
+    await run(updateTask(task.id, "in_progress", null, "session-new"))
+    const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
+    expect(updated.status).toBe("in_progress")
+    expect(updated.assignee?.id).toBe("session-new")
+  })
+
+  test("task assigned to live foreign session → validation_error with context.task", async () => {
+    const agent = makeAgent({ id: "session-live" })
+    const task = await seedTask({ status: "todo", assignee: agent })
+    sessionRegistry.setAlive("session-live", true)
+    const err = await runFail(updateTask(task.id, "in_progress", null, "session-intruder"))
+    expect(err._tag).toBe("validation_error")
+    expect((err.context as { task: { id: string } }).task.id).toBe(task.id)
+  })
+})
+
+// ──────────────────────────────────────────
+// Step 9: assignee set on in_progress
+// ──────────────────────────────────────────
+describe("updateTask / assignee on in_progress", () => {
+  test("task with no assignee → transitions to in_progress with assignee set to sessionId", async () => {
+    const task = await seedTask({ status: "todo", assignee: undefined })
+    await run(updateTask(task.id, "in_progress", null, "session-claimer"))
+    const updated = await run(Effect.flatMap(TaskRepository, (r) => r.findById(task.id)))
+    expect(updated.status).toBe("in_progress")
+    expect(updated.assignee?.id).toBe("session-claimer")
   })
 })

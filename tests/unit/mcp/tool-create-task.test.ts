@@ -32,11 +32,10 @@ describe("toolCreateTask / happy path", () => {
     expect(task.title).toBe("My task")
   })
 
-  test("assignee.id equals sessionId", async () => {
+  test("assignee is undefined on creation", async () => {
     const result = await toolCreateTask(validInput, "session-abc", layer)
     const task = result.task as Record<string, unknown>
-    const assignee = task.assignee as Record<string, unknown>
-    expect(assignee.id).toBe("session-abc")
+    expect(task.assignee).toBeUndefined()
   })
 
   test("task id is a non-empty string", async () => {
