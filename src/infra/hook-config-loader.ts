@@ -79,9 +79,11 @@ export const loadHookConfigs = async (hooksDir: string): Promise<HookConfig[]> =
       for (const key of parsedKeys) {
         if (!(KNOWN_KEYS as readonly string[]).includes(key)) {
           const validKeysStr = KNOWN_KEYS.join(", ")
-          console.warn(
-            `[hook-config-loader] hook "${entry}": unrecognized key "${key}" (valid keys: ${validKeysStr})`
-          )
+          logger.warn("unrecognized key in hook config", {
+            hook: entry,
+            key,
+            validKeys: validKeysStr,
+          })
         }
       }
       const script = await findScript(hookDir)

@@ -20,6 +20,6 @@
     }
   },
   "files": {
-    "includes": ["**", "!node_modules", "!bun.lock"]
+    "includes": ["**", "!node_modules", "!bun.lock", "!.claude"]
   }
 }
