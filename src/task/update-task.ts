@@ -3,6 +3,7 @@ import { guardTransition } from "../domain/status-machine.js"
 import type { Comment, Status, TaskError } from "../domain/types.js"
 import { HookRunner } from "../hook/ports.js"
 import { TaskRepository } from "./ports.js"
+import { SessionRegistry } from "./session-registry.js"
 
 /**
  * Transitions a task to a new status, optionally attaching or replying to a comment.
@@ -15,7 +16,7 @@ export const updateTask = (
   newStatus: Status,
   comment: Comment | null,
   sessionId: string
-): Effect.Effect<void, TaskError, TaskRepository | HookRunner> =>
+): Effect.Effect<void, TaskError, TaskRepository | HookRunner | SessionRegistry> =>
   Effect.gen(function* () {
     const repo = yield* TaskRepository
     const hookRunner = yield* HookRunner
@@ -97,6 +98,24 @@ export const updateTask = (
       }
     }
 
+    // Step 8b: ownership check — reject if a live foreign session owns this task
+    if (
+      newStatus === "in_progress" &&
+      task.assignee !== undefined &&
+      task.assignee.id !== sessionId
+    ) {
+      const registry = yield* SessionRegistry
+      const alive = yield* registry.isAlive(task.assignee.id)
+      if (alive) {
+        return yield* Effect.fail<TaskError>({
+          _tag: "validation_error",
+          message: `task is owned by an active session (${task.assignee.id})`,
+          context: { task },
+        })
+      }
+      // dead session — fall through and let step 9 reassign
+    }
+
     // Step 8: concurrent in_progress — second task for same session requires justification
     if (newStatus === "in_progress") {
       const inProgressTasks = yield* repo.findByStatus("in_progress")
@@ -123,7 +142,12 @@ export const updateTask = (
       ...task,
       status: newStatus,
       comments: updatedComments,
-      ...(newStatus === "in_progress" ? { in_progress_since: new Date() } : {}),
+      ...(newStatus === "in_progress"
+        ? {
+            in_progress_since: new Date(),
+            assignee: { id: sessionId, title: "Agent", description: "" },
+          }
+        : {}),
     }
     yield* repo.update(updatedTask)
     yield* hookRunner.run({

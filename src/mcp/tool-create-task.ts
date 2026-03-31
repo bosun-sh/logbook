@@ -15,15 +15,12 @@ const InputSchema = z.object({
 
 export const toolCreateTask = (
   rawInput: unknown,
-  sessionId: string,
+  _sessionId: string,
   layer: Layer.Layer<TaskRepository>
 ): Promise<{ task: unknown }> => {
   const input = InputSchema.parse(rawInput)
   return Effect.runPromise(
-    Effect.provide(
-      Effect.either(createTask(input, sessionId).pipe(Effect.map((task) => ({ task })))),
-      layer
-    )
+    Effect.provide(Effect.either(createTask(input).pipe(Effect.map((task) => ({ task })))), layer)
   ).then((either) => {
     if (Either.isLeft(either)) throw either.left
     return either.right

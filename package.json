@@ -31,7 +31,8 @@
     "check": "biome check .",
     "prepare": "husky",
     "prepublishOnly": "bun run typecheck",
-    "publish": "bun run typecheck && npm pack --dry-run && npm publish --ignore-scripts"
+    "publish": "bun run typecheck && npm pack --dry-run && npm publish --ignore-scripts",
+    "publish:dev": "bun link ."
   },
   "dependencies": {
     "effect": "^3.12.0",

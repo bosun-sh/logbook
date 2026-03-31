@@ -2,17 +2,24 @@ import { beforeEach, describe, expect, test } from "bun:test"
 import { HookRunner } from "@logbook/hook/ports.js"
 import { toolUpdateTask } from "@logbook/mcp/tool-update-task.js"
 import { TaskRepository } from "@logbook/task/ports.js"
+import { SessionRegistry } from "@logbook/task/session-registry.js"
 import { Effect, Layer } from "effect"
 import { makeComment, makeTask } from "../../helpers/factories.js"
+import { InMemorySessionRegistry } from "../../helpers/in-memory-session-registry.js"
 import { InMemoryTaskRepository } from "../../helpers/in-memory-task-repository.js"
 import { SpyHookRunner } from "../../helpers/spy-hook-runner.js"
 
 let repo: InMemoryTaskRepository
 let spy: SpyHookRunner
-let layer: Layer.Layer<TaskRepository | HookRunner>
+let sessionRegistry: InMemorySessionRegistry
+let layer: Layer.Layer<TaskRepository | HookRunner | SessionRegistry>
 
 const makeCurrentLayer = () =>
-  Layer.merge(Layer.succeed(TaskRepository, repo), Layer.succeed(HookRunner, spy))
+  Layer.mergeAll(
+    Layer.succeed(TaskRepository, repo),
+    Layer.succeed(HookRunner, spy),
+    Layer.succeed(SessionRegistry, sessionRegistry)
+  )
 
 const seedTask = async (overrides: Parameters<typeof makeTask>[0] = {}) => {
   const task = makeTask(overrides)
@@ -28,6 +35,7 @@ const seedTask = async (overrides: Parameters<typeof makeTask>[0] = {}) => {
 beforeEach(() => {
   repo = new InMemoryTaskRepository()
   spy = new SpyHookRunner()
+  sessionRegistry = new InMemorySessionRegistry()
   layer = makeCurrentLayer()
 })
 
@@ -37,7 +45,7 @@ describe("toolUpdateTask / happy path", () => {
     layer = makeCurrentLayer()
     const result = await toolUpdateTask(
       { id: task.id, new_status: "backlog" },
-      task.assignee!.id,
+      task.assignee?.id ?? "",
       layer
     )
     expect(result).toEqual({ ok: true })
@@ -52,7 +60,7 @@ describe("toolUpdateTask / happy path", () => {
         new_status: "need_info",
         comment: { title: "Blocking question", content: "What does this do?", kind: "need_info" },
       },
-      task.assignee!.id,
+      task.assignee?.id ?? "",
       layer
     )
     expect(spy.calls.length).toBe(1)
@@ -62,7 +70,7 @@ describe("toolUpdateTask / happy path", () => {
   test("todo → in_progress succeeds and updates task", async () => {
     const task = await seedTask({ status: "todo" })
     layer = makeCurrentLayer()
-    await toolUpdateTask({ id: task.id, new_status: "in_progress" }, task.assignee!.id, layer)
+    await toolUpdateTask({ id: task.id, new_status: "in_progress" }, task.assignee?.id ?? "", layer)
     const updated = await Effect.runPromise(
       Effect.provide(
         Effect.flatMap(TaskRepository, (r) => r.findById(task.id)),
@@ -124,13 +132,13 @@ describe("toolUpdateTask / reply cycle", () => {
           kind: "need_info",
         },
       },
-      task.assignee!.id,
+      task.assignee?.id ?? "",
       layer
     )
     // Now transitioning out of need_info should succeed
     const result = await toolUpdateTask(
       { id: task.id, new_status: "in_progress" },
-      task.assignee!.id,
+      task.assignee?.id ?? "",
       layer
     )
     expect(result).toEqual({ ok: true })
@@ -145,7 +153,7 @@ describe("toolUpdateTask / reply cycle", () => {
         new_status: "need_info",
         comment: { title: "Question", content: "What?", kind: "need_info" },
       },
-      task.assignee!.id,
+      task.assignee?.id ?? "",
       layer
     )
     const updated = await Effect.runPromise(
@@ -171,7 +179,7 @@ describe("toolUpdateTask / domain errors bubble as rejections", () => {
     const task = await seedTask({ status: "backlog" })
     layer = makeCurrentLayer()
     await expect(
-      toolUpdateTask({ id: task.id, new_status: "done" }, task.assignee!.id, layer)
+      toolUpdateTask({ id: task.id, new_status: "done" }, task.assignee?.id ?? "", layer)
     ).rejects.toBeDefined()
   })
 })

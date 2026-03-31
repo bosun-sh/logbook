@@ -52,17 +52,17 @@ beforeEach(() => {
 
 describe("createTask / happy path", () => {
   test("creates task in backlog", async () => {
-    const task = await runWith(createTask(validInput, "session-1"), repo)
+    const task = await runWith(createTask(validInput), repo)
     expect(task.status).toBe("backlog")
   })
 
-  test("assignee.id equals sessionId", async () => {
-    const task = await runWith(createTask(validInput, "session-abc"), repo)
-    expect(task.assignee!.id).toBe("session-abc")
+  test("assignee is undefined on creation", async () => {
+    const task = await runWith(createTask(validInput), repo)
+    expect(task.assignee).toBeUndefined()
   })
 
   test("task is retrievable via findByStatus('backlog')", async () => {
-    const task = await runWith(createTask(validInput, "s1"), repo)
+    const task = await runWith(createTask(validInput), repo)
     const found = await runWith(
       Effect.flatMap(TaskRepository, (r) => r.findByStatus("backlog")),
       repo
@@ -71,13 +71,13 @@ describe("createTask / happy path", () => {
   })
 
   test("auto-generated id is non-empty string", async () => {
-    const task = await runWith(createTask(validInput, "s1"), repo)
+    const task = await runWith(createTask(validInput), repo)
     expect(typeof task.id).toBe("string")
     expect(task.id.length).toBeGreaterThan(0)
   })
 
   test("estimation derived from predictedKTokens via Fibonacci mapping", async () => {
-    const task = await runWith(createTask(validInput, "s1"), repo)
+    const task = await runWith(createTask(validInput), repo)
     expect(task.estimation).toBe(3)
   })
 })
@@ -94,19 +94,19 @@ describe("createTask / validation errors", () => {
   for (const field of requiredFields) {
     test(`missing ${field} → validation_error`, async () => {
       const input = { ...validInput, [field]: "" }
-      const err = await runFailWith(createTask(input, "s1"), repo)
+      const err = await runFailWith(createTask(input), repo)
       expect(err._tag).toBe("validation_error")
     })
   }
 
   test("missing predictedKTokens → validation_error", async () => {
     const input = { ...validInput, predictedKTokens: undefined as unknown as number }
-    const err = await runFailWith(createTask(input, "s1"), repo)
+    const err = await runFailWith(createTask(input), repo)
     expect(err._tag).toBe("validation_error")
   })
 
   test("predictedKTokens: 21 → validation_error (exceeds max)", async () => {
-    const err = await runFailWith(createTask({ ...validInput, predictedKTokens: 21 }, "s1"), repo)
+    const err = await runFailWith(createTask({ ...validInput, predictedKTokens: 21 }), repo)
     expect(err).toMatchObject({
       _tag: "validation_error",
       message: "predicted kilotokens exceed maximum allowed",
@@ -117,7 +117,7 @@ describe("createTask / validation errors", () => {
 describe("createTask / duplicate id", () => {
   test("duplicate id → conflict", async () => {
     // Create task, which saves it to the repo
-    const task = await runWith(createTask(validInput, "s1"), repo)
+    const task = await runWith(createTask(validInput), repo)
     // Attempt to save the same task again via repo should fail with conflict
     const err = await runFailWith(
       Effect.flatMap(TaskRepository, (r) => r.save(task)),
