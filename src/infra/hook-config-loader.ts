@@ -2,6 +2,9 @@ import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 import type { HookConfig } from "../hook/hook-executor.js"
+import { logger } from "./logger.js"
+
+const KNOWN_KEYS = ["event", "condition", "timeout_ms"] as const
 
 const HookConfigFileSchema = z.object({
   event: z.string(),
@@ -68,15 +71,24 @@ export const loadHookConfigs = async (hooksDir: string): Promise<HookConfig[]> =
       const parsed = parseSimpleYaml(raw)
       const validated = HookConfigFileSchema.safeParse(parsed)
       if (!validated.success) {
-        console.warn(
-          `[hook-config-loader] invalid config at ${configPath}:`,
-          validated.error.message
-        )
+        logger.warn("invalid hook config", { path: configPath, error: validated.error.message })
         continue
+      }
+      // Warn on unrecognized keys
+      const parsedKeys = Object.keys(parsed)
+      for (const key of parsedKeys) {
+        if (!(KNOWN_KEYS as readonly string[]).includes(key)) {
+          const validKeysStr = KNOWN_KEYS.join(", ")
+          logger.warn("unrecognized key in hook config", {
+            hook: entry,
+            key,
+            validKeys: validKeysStr,
+          })
+        }
       }
       const script = await findScript(hookDir)
       if (script === undefined) {
-        console.warn(`[hook-config-loader] no script found in ${hookDir}, skipping`)
+        logger.warn("no script found in hook dir, skipping", { path: hookDir })
         continue
       }
       const { event, condition, timeout_ms } = validated.data
@@ -88,7 +100,7 @@ export const loadHookConfigs = async (hooksDir: string): Promise<HookConfig[]> =
       }
       configs.push(config)
     } catch (e: unknown) {
-      console.warn(`[hook-config-loader] failed to load hook "${entry}":`, String(e))
+      logger.warn("failed to load hook", { hook: entry, error: String(e) })
     }
   }
 
