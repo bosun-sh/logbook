@@ -199,6 +199,22 @@ type EditTaskInput = {
 
 each MCP session is treated as a distinct agent instance. the server assigns a `session_id` on connection and uses it to scope `GetCurrentTask` — no explicit agent ID needs to be passed by the caller.
 
+## install
+
+```bash
+npm install -g @bosun-sh/logbook-mcp
+```
+
+requires **bun ≥ 1.0.0** as the runtime ([install bun](https://bun.sh)).
+
+verify the installation:
+
+```bash
+logbook-mcp --version
+```
+
+for a full onboarding walkthrough see [quickstart.md](quickstart.md).
+
 ## configuration
 
 ### environment variables
