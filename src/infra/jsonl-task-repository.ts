@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import type { Status, Task, TaskError } from "../domain/types.js"
 import { TaskSchema } from "../domain/types.js"
 import type { TaskRepository } from "../task/ports.js"
+import { logger } from "./logger.js"
 
 /**
  * JSONL-backed TaskRepository.
@@ -80,7 +81,7 @@ export class JsonlTaskRepository implements TaskRepository {
         for (const line of lines) {
           const result = parseLine(line)
           if (result._tag === "error") {
-            console.warn("[JsonlTaskRepository] skipping malformed line:", result.reason)
+            logger.warn("skipping malformed JSONL line", { line, reason: result.reason })
             continue
           }
           if (result.task.id === id) return result.task
