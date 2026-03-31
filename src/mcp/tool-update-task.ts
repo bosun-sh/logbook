@@ -3,6 +3,7 @@ import { z } from "zod"
 import { CommentKindSchema, StatusSchema } from "../domain/types.js"
 import type { HookRunner } from "../hook/ports.js"
 import type { TaskRepository } from "../task/ports.js"
+import type { SessionRegistry } from "../task/session-registry.js"
 import { updateTask } from "../task/update-task.js"
 
 const CommentInputSchema = z
@@ -24,7 +25,7 @@ const InputSchema = z.object({
 export const toolUpdateTask = (
   rawInput: unknown,
   sessionId: string,
-  layer: Layer.Layer<TaskRepository | HookRunner>
+  layer: Layer.Layer<TaskRepository | HookRunner | SessionRegistry>
 ): Promise<{ ok: boolean }> => {
   const input = InputSchema.parse(rawInput)
   const comment = input.comment

@@ -14,12 +14,11 @@ export interface CreateTaskInput {
 }
 
 /**
- * Creates a new task in `backlog` status assigned to `sessionId`.
+ * Creates a new task in `backlog` status with no assignee.
  * Validates all fields and derives a Fibonacci estimation from predictedKTokens.
  */
 export const createTask = (
-  input: CreateTaskInput,
-  sessionId: string
+  input: CreateTaskInput
 ): Effect.Effect<Task, TaskError, TaskRepository> => {
   // Validate required string fields
   const requiredStringFields: Array<keyof CreateTaskInput> = [
@@ -59,11 +58,6 @@ export const createTask = (
       description: input.description,
       estimation,
       comments: [],
-      assignee: {
-        id: sessionId,
-        title: "Agent",
-        description: "",
-      },
       status: "backlog" as const,
       priority: input.priority ?? 0,
     }
