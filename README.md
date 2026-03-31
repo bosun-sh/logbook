@@ -149,7 +149,8 @@ type Task = {
 }
 
 // status defaults to 'in_progress'; results ordered by priority DESC
-type ListTasks = (status: Status | '*') => Task[]
+// project and milestone are optional; all provided filters compose (AND semantics)
+type ListTasks = (options: { status: Status | '*', project?: string, milestone?: string }) => Task[]
 
 // returns the highest-priority task for the current session using a priority chain:
 // 1. own in_progress → 2. unassigned in_progress → 3. orphaned in_progress
