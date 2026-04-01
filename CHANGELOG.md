@@ -17,7 +17,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **`--version` / `-v` flags** — prints the package version and exits.
 - **`--help` / `-h` flags** — prints command usage, available subcommands, and all environment variables.
 - **`quickstart.md`** — zero-to-running onboarding guide: install, init, wire into an MCP client, and verify the first task.
-- **README: install section** — `npm install -g @bosun-sh/logbook-mcp` command and link to `quickstart.md`.
+- **README: install section** — `npm install -g @bosun-sh/logbook` command and link to `quickstart.md`.
 - **README: agent session walkthrough** — end-to-end narrative showing how an agent picks up a task, works through it, and closes the loop.
 - **README: API stability guarantees** — documents the stability contract: tools and their input/output shapes are stable within a major version; internal module paths are not part of the public API.
 

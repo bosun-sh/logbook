@@ -156,4 +156,3 @@ describe("logger / stderr integration", () => {
     expect(line).toBeUndefined()
   })
 })
-
