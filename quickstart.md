@@ -6,7 +6,7 @@
 
 2. **Install logbook**
    ```bash
-   npm install -g @bosun-sh/logbook-mcp
+   npm install -g @bosun-sh/logbook
    ```
 
 3. **Configure your AI client**

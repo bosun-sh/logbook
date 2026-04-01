@@ -25,7 +25,7 @@ Claude Code auto-starts MCP servers declared in `.claude/settings.json`. Current
 
 ```json
 {
-  "name": "@bosun-sh/logbook-mcp",
+  "name": "@bosun-sh/logbook",
   "version": "0.2.0",
   "description": "File-system kanban board MCP server for AI agents",
   "type": "module",
@@ -107,7 +107,7 @@ Add one of the following to the project's `.claude/settings.json`:
 ### Option A — global install (recommended for stable setups)
 
 ```bash
-bun install -g @bosun-sh/logbook-mcp
+bun install -g @bosun-sh/logbook
 ```
 
 ```json
@@ -133,7 +133,7 @@ No install step. `bunx` caches the package on first run. Pin the version to avoi
   "mcpServers": {
     "logbook": {
       "command": "bunx",
-      "args": ["@bosun-sh/logbook-mcp@0.2.0"],
+      "args": ["@bosun-sh/logbook@0.2.0"],
       "env": {
         "LOGBOOK_TASKS_FILE": "${workspaceFolder}/tasks.jsonl",
         "LOGBOOK_HOOKS_DIR": "${workspaceFolder}/hooks"
@@ -159,7 +159,7 @@ npm pack --dry-run
 # 3. Test the binary locally before publishing
 bun link
 # In another project:
-bun link @bosun-sh/logbook-mcp
+bun link @bosun-sh/logbook
 # Add the settings.json snippet (Option A), open Claude Code, confirm MCP tools appear
 
 # 4. Publish

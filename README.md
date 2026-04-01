@@ -270,7 +270,7 @@ each MCP session is treated as a distinct agent instance. the server assigns a `
 ## install
 
 ```bash
-npm install -g @bosun-sh/logbook-mcp
+npm install -g @bosun-sh/logbook
 ```
 
 requires **bun ≥ 1.0.0** as the runtime ([install bun](https://bun.sh)).
