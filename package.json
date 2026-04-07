@@ -1,9 +1,10 @@
 {
   "name": "@bosun-sh/logbook",
-  "version": "1.0.0",
-  "description": "File-system kanban board MCP server for AI agents",
+  "version": "1.1.0",
+  "description": "File-system kanban board CLI and MCP server for AI agents",
   "type": "module",
   "bin": {
+    "logbook": "src/cli/cli.ts",
     "logbook-mcp": "src/mcp/server.ts"
   },
   "files": [

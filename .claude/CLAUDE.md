@@ -2,6 +2,44 @@
 
 File-system kanban board for autonomous AI agents. Tracks tasks across a structured lifecycle so agents and humans share a single source of truth without context bloat.
 
+## CLI Usage
+
+The CLI provides the same functionality as MCP tools via command line:
+
+| Command | Description |
+|---------|-------------|
+| `logbook create-task` | Create a new task in backlog |
+| `logbook list-tasks` | List tasks by status (default: in_progress) |
+| `logbook current-task` | Get current in-progress task for session |
+| `logbook update-task` | Transition task status |
+| `logbook edit-task` | Edit task fields without changing status |
+| `logbook init` | Initialize project |
+
+### Examples
+
+```bash
+# Create a task
+logbook create-task --project myproject --milestone v1 --title "Fix bug" \
+  --definition-of-done "Bug fixed and tested" --description "Details..." \
+  --predicted-k-tokens 3
+
+# List tasks
+logbook list-tasks --status in_progress
+logbook list-tasks --status "*"
+logbook list-tasks --status todo --project myproject
+
+# Get current task
+logbook current-task
+
+# Update task status
+logbook update-task --id <uuid> --new-status in_progress
+logbook update-task --id <uuid> --new-status need_info \
+  --comment-title "Need info" --comment-content "What does X mean?"
+
+# Edit task
+logbook edit-task --id <uuid> --title "New title"
+```
+
 ## Stack
 
 - **Runtime**: Bun / TypeScript
