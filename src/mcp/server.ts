@@ -1,15 +1,9 @@
 #!/usr/bin/env bun
 import { createInterface } from "node:readline"
-import { Effect, Layer } from "effect"
+import { Effect } from "effect"
 import { runInit } from "../cli/init.js"
-import { executeHooks } from "../hook/hook-executor.js"
-import type { HookEvent } from "../hook/ports.js"
-import { HookRunner } from "../hook/ports.js"
-import { loadHookConfigs } from "../infra/hook-config-loader.js"
-import { JsonlTaskRepository } from "../infra/jsonl-task-repository.js"
+import { createLayer } from "../infra/layer.js"
 import { PidSessionRegistry } from "../infra/pid-session-registry.js"
-import { TaskRepository } from "../task/ports.js"
-import { SessionRegistry } from "../task/session-registry.js"
 import { taskErrorToMcpError } from "./error-codes.js"
 import { newSessionId } from "./session.js"
 import { toolCreateTask } from "./tool-create-task.js"
@@ -218,19 +212,8 @@ export const startServer = async (): Promise<void> => {
   const tasksFile = process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl"
   const hooksDir = process.env.LOGBOOK_HOOKS_DIR ?? "./hooks"
 
-  const configs = await loadHookConfigs(hooksDir)
-  const repo = new JsonlTaskRepository(tasksFile)
+  const fullLayer = await createLayer({ tasksFile, hooksDir })
   const registry = new PidSessionRegistry(tasksFile)
-
-  const hookRunnerImpl: HookRunner = {
-    run: (event: HookEvent) => executeHooks(event, configs),
-  }
-
-  const repoLayer: Layer.Layer<TaskRepository> = Layer.succeed(TaskRepository, repo)
-  const fullLayer: Layer.Layer<TaskRepository | HookRunner | SessionRegistry> = Layer.merge(
-    Layer.merge(repoLayer, Layer.succeed(HookRunner, hookRunnerImpl)),
-    Layer.succeed(SessionRegistry, registry)
-  )
 
   const sessionId = newSessionId()
   await Effect.runPromise(registry.register(sessionId, process.pid))
@@ -256,15 +239,15 @@ export const startServer = async (): Promise<void> => {
         return { content: [{ type: "text", text: JSON.stringify(result) }] }
       }
       case "list_tasks":
-        return toolListTasks(params, repoLayer)
+        return toolListTasks(params, fullLayer)
       case "current_task":
         return toolCurrentTask(sessionId, fullLayer)
       case "update_task":
         return toolUpdateTask(params, sessionId, fullLayer)
       case "create_task":
-        return toolCreateTask(params, sessionId, repoLayer)
+        return toolCreateTask(params, sessionId, fullLayer)
       case "edit_task":
-        return toolEditTask(params, repoLayer)
+        return toolEditTask(params, fullLayer)
       default:
         return Promise.reject(new MethodNotFoundError(method))
     }

@@ -6,6 +6,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [1.1.0] — 2026-04-06
+
+### Added
+
+- **CLI entry point (`logbook`)** — new `logbook` binary providing all MCP tool functionality via command line. Supports all commands: `create-task`, `list-tasks`, `current-task`, `update-task`, `edit-task`, `init`.
+- **Shared layer infrastructure** — `src/infra/layer.ts` extracts the Effect layer construction used by both CLI and MCP server, ensuring consistent behavior across presentation layers.
+- **Session management in CLI** — sessions are auto-generated and persisted to `.logbook-session`. If a session exists, it's reused; otherwise a new one is created.
+- **Detailed help output** — `--help` now includes comprehensive documentation for each command with required/optional arguments, examples, and lifecycle diagrams.
+- **Enhanced error messages** — errors include CLI-specific hints showing the correct command format (e.g., "Use: logbook update-task --id=... --new-status=...").
+- **`logbook init` documentation generation** — running `init` in a new project creates `AGENTS.md` and `CLAUDE.md` with CLI documentation:
+  - If neither exists → creates AGENTS.md and symlinks CLAUDE.md to it
+  - If only AGENTS.md exists → appends logbook docs
+  - If only CLAUDE.md exists → appends logbook docs
+- **`--force` flag for `logbook init`** — ensures both AGENTS.md and CLAUDE.md exist. Appends to existing files, creates/symlinks missing ones.
+
+### Changed
+
+- **MCP server refactored** — `src/mcp/server.ts` now uses the shared layer from `src/infra/layer.ts` instead of duplicating layer construction.
+- **Project documentation** — `.claude/CLAUDE.md` updated with CLI usage section.
+- **Package description** — updated to reflect CLI support.
+- **README updated** — added CLI usage section, updated install and configuration docs.
+
+---
+
 ## [1.0.0] — 2026-03-31
 
 ### Added
