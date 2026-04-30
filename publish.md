@@ -1,12 +1,15 @@
 # Publishing logbook-mcp
 
-This document specifies all changes required to publish logbook as an npm package so any project can use it with zero manual server management.
+This document specifies the packaging path for the Go-based logbook binaries so any
+project can use them through npm with zero manual server management.
 
 ---
 
 ## Why
 
-Claude Code auto-starts MCP servers declared in `.claude/settings.json`. Currently the config uses `bun src/mcp/server.ts`, which only works inside the logbook repo. Publishing to npm lets any project reference the server as a global command — no cloning, no path management.
+Claude Code auto-starts MCP servers declared in `.claude/settings.json`. Publishing the
+compiled binaries to npm lets any project reference the server as a global command, with
+no cloning or local build step.
 
 ---
 
@@ -14,37 +17,40 @@ Claude Code auto-starts MCP servers declared in `.claude/settings.json`. Current
 
 ### 1. `package.json`
 
-- Remove `"private": true`
-- Rename `"name"` from `"logbook"` to `"logbook-mcp"`
-- Bump `"version"` to `"0.2.0"`
-- Add `"bin"` — the shebang is already in `src/mcp/server.ts`
-- Add `"files"` whitelist — include source, exclude tests/specs/.claude/lock files
-- Add `"engines"` — declares Bun as a hard requirement (already used via `Bun.spawn`)
-- Add `"publishConfig"` — prevents accidental publish to a private registry
-- Add `"prepublishOnly"` script — runs typecheck before every publish as a quality gate
+- Keep the package name as `@bosun-sh/logbook`
+- Expose `logbook` and `logbook-mcp` through small Node launchers in `bin/`
+- Build platform binaries into `dist/bin/<platform>/`
+- Include `bin/`, `dist/`, `hooks/`, `README.md`, and `LICENSE` in the npm tarball
+- Declare a Node engine for the launcher scripts
+- Build the binaries in `prepack` so `npm pack` and `npm publish` ship ready-to-run executables
 
 ```json
 {
   "name": "@bosun-sh/logbook",
-  "version": "0.2.0",
-  "description": "File-system kanban board MCP server for AI agents",
+  "version": "1.2.0",
+  "description": "File-system kanban board CLI and MCP server for AI agents",
   "type": "module",
   "bin": {
-    "logbook-mcp": "src/mcp/server.ts"
+    "logbook": "bin/logbook.cjs",
+    "logbook-mcp": "bin/logbook-mcp.cjs"
   },
   "files": [
-    "src/",
+    "bin/",
+    "dist/",
     "hooks/",
+    "LICENSE",
     "README.md"
   ],
   "engines": {
-    "bun": ">=1.0.0"
+    "node": ">=18.0.0"
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
+    "build:binaries": "sh scripts/build-binaries.sh",
+    "prepack": "sh scripts/build-binaries.sh",
     "start":          "bun src/mcp/server.ts",
     "test":           "bun test",
     "test:watch":     "bun test --watch",
@@ -66,18 +72,16 @@ Claude Code auto-starts MCP servers declared in `.claude/settings.json`. Current
 
 ---
 
-### 2. `hooks/review-spawn/script.ts` — fix path derivation (line 88)
+### 2. `hooks/review-spawn/script.ts` — project-root derivation
 
-**Problem**: line 88 derives the project root from `import.meta.url`. When the package is installed globally, `import.meta.url` resolves to the npm cache (e.g. `~/.bun/install/global/node_modules/logbook-mcp/`), not the user's project. The `--mcp-config` path passed to the reviewer agent ends up pointing at the wrong directory.
+**Problem**: the reviewer hook needs to resolve the user's project root, not the package
+install location.
 
-**Fix**: derive the project root from `LOGBOOK_TASKS_FILE` instead, which is always set to the user's project.
+**Fix**: derive the project root from `LOGBOOK_TASKS_FILE`, which is always set to the user's
+project.
 
 ```ts
-// Before (line 88):
-const projectRoot = path.dirname(path.dirname(path.dirname(import.meta.url.replace("file://", ""))))
-
-// After:
-const projectRoot = path.dirname(process.env['LOGBOOK_TASKS_FILE'] ?? './tasks.jsonl')
+const projectRoot = path.dirname(process.env.LOGBOOK_TASKS_FILE ?? "./tasks.jsonl")
 ```
 
 ---
@@ -107,7 +111,7 @@ Add one of the following to the project's `.claude/settings.json`:
 ### Option A — global install (recommended for stable setups)
 
 ```bash
-bun install -g @bosun-sh/logbook
+npm install -g @bosun-sh/logbook
 ```
 
 ```json
@@ -124,16 +128,17 @@ bun install -g @bosun-sh/logbook
 }
 ```
 
-### Option B — bunx, zero install (recommended for onboarding)
+### Option B — npx, zero install (recommended for onboarding)
 
-No install step. `bunx` caches the package on first run. Pin the version to avoid silent breaking changes.
+No install step. `npx` caches the package on first run. Pin the version to avoid silent
+breaking changes.
 
 ```json
 {
   "mcpServers": {
     "logbook": {
-      "command": "bunx",
-      "args": ["@bosun-sh/logbook@0.2.0"],
+      "command": "npx",
+      "args": ["@bosun-sh/logbook@1.2.0"],
       "env": {
         "LOGBOOK_TASKS_FILE": "${workspaceFolder}/tasks.jsonl",
         "LOGBOOK_HOOKS_DIR": "${workspaceFolder}/hooks"
@@ -153,13 +158,13 @@ bun run typecheck
 
 # 2. Inspect tarball contents before publishing
 npm pack --dry-run
-# Expected in tarball: src/, hooks/, README.md
-# Must NOT appear: tests/, specs/, .claude/, bun.lock, tasks.jsonl
+# Expected in tarball: bin/, dist/, hooks/, README.md, LICENSE
+# Must NOT appear: tests/, specs/, .claude/, bun.lock, tasks.jsonl, source-only internals
 
 # 3. Test the binary locally before publishing
-bun link
+npm install -g .
 # In another project:
-bun link @bosun-sh/logbook
+npm install -g @bosun-sh/logbook
 # Add the settings.json snippet (Option A), open Claude Code, confirm MCP tools appear
 
 # 4. Publish

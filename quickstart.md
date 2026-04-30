@@ -1,8 +1,8 @@
 # Quickstart: Running logbook in 2 minutes
 
 1. **Prerequisites**
-   - Install [Bun](https://bun.sh) (≥ 1.0.0)
    - Node.js installed (for npm)
+   - A supported platform binary will be downloaded with the package
 
 2. **Install logbook**
    ```bash

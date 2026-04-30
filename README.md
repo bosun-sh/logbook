@@ -310,7 +310,8 @@ each MCP session is treated as a distinct agent instance. the server assigns a `
 npm install -g @bosun-sh/logbook
 ```
 
-requires **bun ≥ 1.0.0** as the runtime ([install bun](https://bun.sh)).
+the npm package includes prebuilt Go binaries for common platforms, so you do not need Bun
+to run the published commands.
 
 verify the installation:
 
