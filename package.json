@@ -1,25 +1,29 @@
 {
   "name": "@bosun-sh/logbook",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "File-system kanban board CLI and MCP server for AI agents",
   "type": "module",
   "bin": {
-    "logbook": "src/cli/cli.ts",
-    "logbook-mcp": "src/mcp/server.ts"
+    "logbook": "bin/logbook.cjs",
+    "logbook-mcp": "bin/logbook-mcp.cjs"
   },
   "files": [
-    "src/",
+    "bin/",
+    "dist/",
     "hooks/",
+    "LICENSE",
     "README.md"
   ],
   "engines": {
-    "bun": ">=1.0.0"
+    "node": ">=18.0.0"
   },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
+    "build:binaries": "sh scripts/build-binaries.sh",
+    "prepack": "sh scripts/build-binaries.sh",
     "start": "bun src/mcp/server.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
@@ -30,9 +34,9 @@
     "lint:fix": "biome lint --write .",
     "format": "biome format --write .",
     "check": "biome check .",
-    "prepare": "husky",
+    "prepare": "node -e \"process.exit(0)\"",
     "prepublishOnly": "bun run typecheck",
-    "publish": "bun run typecheck && npm pack --dry-run && npm publish --ignore-scripts",
+    "publish": "npm run build:binaries && bun run typecheck && npm pack --dry-run && npm publish",
     "publish:dev": "bun link ."
   },
   "dependencies": {

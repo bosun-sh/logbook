@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+: "${GOCACHE:=/tmp/go-build}"
+: "${GOMODCACHE:=/tmp/go-mod}"
+
+echo "→ go test"
+env GOCACHE="$GOCACHE" GOMODCACHE="$GOMODCACHE" go test ./...
