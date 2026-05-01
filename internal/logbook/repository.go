@@ -117,14 +117,24 @@ func parseTaskLine(line string) (Task, error) {
 	if err := json.Unmarshal([]byte(line), &task); err != nil {
 		return Task{}, err
 	}
+	normalizeTask(&task)
 	if err := validateTask(task); err != nil {
 		return Task{}, err
 	}
 	return task, nil
 }
 
+func normalizeTask(task *Task) {
+	if task.DefinitionOfDoD == nil {
+		task.DefinitionOfDoD = []string{}
+	}
+	if task.TestCases == nil {
+		task.TestCases = []string{}
+	}
+}
+
 func validateTask(task Task) error {
-	if task.Project == "" || task.Milestone == "" || task.ID == "" || task.Title == "" || task.DefinitionOfDoD == "" || task.Description == "" {
+	if task.Project == "" || task.Milestone == "" || task.ID == "" || task.Title == "" || task.Description == "" {
 		return errors.New("task validation failed")
 	}
 	if task.Estimation <= 0 {
@@ -137,6 +147,9 @@ func validateTask(task Task) error {
 		return errors.New("task validation failed")
 	}
 	if task.Comments == nil {
+		return errors.New("task validation failed")
+	}
+	if task.DefinitionOfDoD == nil || task.TestCases == nil {
 		return errors.New("task validation failed")
 	}
 	for _, c := range task.Comments {

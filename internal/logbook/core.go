@@ -12,7 +12,7 @@ type Layer struct {
 	Hooks    []HookConfig
 }
 
-func CreateTask(input CreateTaskInput) (Task, error) {
+func CreateTask(input CreateTaskInput, sessionID string) (Task, error) {
 	required := []struct {
 		field string
 		value string
@@ -20,13 +20,21 @@ func CreateTask(input CreateTaskInput) (Task, error) {
 		{field: "project", value: input.Project},
 		{field: "milestone", value: input.Milestone},
 		{field: "title", value: input.Title},
-		{field: "definition_of_done", value: input.DefinitionOfDone},
 		{field: "description", value: input.Description},
 	}
 	for _, item := range required {
 		if item.value == "" {
 			return Task{}, TaskError{Tag: "validation_error", Message: fmt.Sprintf("%s is required", item.field)}
 		}
+	}
+	if len(input.DefinitionOfDone) == 0 {
+		return Task{}, TaskError{Tag: "validation_error", Message: "definition_of_done is required"}
+	}
+	if hasEmptyString(input.DefinitionOfDone) {
+		return Task{}, TaskError{Tag: "validation_error", Message: "definition_of_done entries must be non-empty"}
+	}
+	if hasEmptyString(input.TestCases) {
+		return Task{}, TaskError{Tag: "validation_error", Message: "test_cases entries must be non-empty"}
 	}
 	estimation, err := EstimateFromKTokens(input.PredictedKTokens)
 	if err != nil {
@@ -37,8 +45,11 @@ func CreateTask(input CreateTaskInput) (Task, error) {
 		Milestone:       input.Milestone,
 		ID:              newUUID(),
 		Title:           input.Title,
-		DefinitionOfDoD: input.DefinitionOfDone,
+		DefinitionOfDoD: append([]string{}, input.DefinitionOfDone...),
+		TestCases:       append([]string{}, input.TestCases...),
 		Description:     input.Description,
+		AssignedSession: sessionID,
+		AssignedModel:   assignedModelForKTokens(input.PredictedKTokens),
 		Estimation:      estimation,
 		Comments:        []Comment{},
 		Status:          StatusBacklog,
@@ -54,10 +65,20 @@ type CreateTaskInput struct {
 	Project          string
 	Milestone        string
 	Title            string
-	DefinitionOfDone string
+	DefinitionOfDone []string
+	TestCases        []string
 	Description      string
 	PredictedKTokens int
 	Priority         int
+}
+
+func hasEmptyString(values []string) bool {
+	for _, v := range values {
+		if v == "" {
+			return true
+		}
+	}
+	return false
 }
 
 type ListTasksOptions struct {
@@ -304,7 +325,10 @@ func EditTask(id string, updates EditTaskInput, repo JSONLTaskRepository) (Task,
 		updated.Description = *updates.Description
 	}
 	if updates.DefinitionOfDoD != nil {
-		updated.DefinitionOfDoD = *updates.DefinitionOfDoD
+		updated.DefinitionOfDoD = append([]string{}, *updates.DefinitionOfDoD...)
+	}
+	if updates.TestCases != nil {
+		updated.TestCases = append([]string{}, *updates.TestCases...)
 	}
 	if updates.Priority != nil {
 		if *updates.Priority < 0 {
@@ -328,7 +352,8 @@ func EditTask(id string, updates EditTaskInput, repo JSONLTaskRepository) (Task,
 type EditTaskInput struct {
 	Title            *string
 	Description      *string
-	DefinitionOfDoD  *string
+	DefinitionOfDoD  *[]string
+	TestCases        *[]string
 	PredictedKTokens *int
 	Priority         *int
 	Status           *Status

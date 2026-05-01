@@ -1,5 +1,6 @@
 import { Effect } from "effect"
 import { estimateFromKTokens } from "../domain/kTokens.js"
+import { selectAssignedModel } from "../domain/model-selection.js"
 import type { Task, TaskError } from "../domain/types.js"
 import { TaskRepository } from "./ports.js"
 
@@ -7,25 +8,27 @@ export interface CreateTaskInput {
   project: string
   milestone: string
   title: string
-  definition_of_done: string
+  definition_of_done: string[]
+  test_cases: string[]
   description: string
   predictedKTokens: number
   priority?: number
 }
 
 /**
- * Creates a new task in `backlog` status with no assignee.
- * Validates all fields and derives a Fibonacci estimation from predictedKTokens.
+ * Creates a new task in `backlog` status.
+ * Validates all fields, stores assignment metadata, and derives a Fibonacci estimation
+ * from predictedKTokens.
  */
 export const createTask = (
-  input: CreateTaskInput
+  input: CreateTaskInput,
+  sessionId: string
 ): Effect.Effect<Task, TaskError, TaskRepository> => {
   // Validate required string fields
   const requiredStringFields: Array<keyof CreateTaskInput> = [
     "project",
     "milestone",
     "title",
-    "definition_of_done",
     "description",
   ]
 
@@ -36,6 +39,34 @@ export const createTask = (
         message: `${field} is required`,
       })
     }
+  }
+
+  if (!Array.isArray(input.definition_of_done) || input.definition_of_done.length === 0) {
+    return Effect.fail({
+      _tag: "validation_error" as const,
+      message: "definition_of_done is required",
+    })
+  }
+
+  if (input.definition_of_done.some((entry) => entry === "")) {
+    return Effect.fail({
+      _tag: "validation_error" as const,
+      message: "definition_of_done entries must be non-empty",
+    })
+  }
+
+  if (!Array.isArray(input.test_cases)) {
+    return Effect.fail({
+      _tag: "validation_error" as const,
+      message: "test_cases is required",
+    })
+  }
+
+  if (input.test_cases.some((entry) => entry === "")) {
+    return Effect.fail({
+      _tag: "validation_error" as const,
+      message: "test_cases entries must be non-empty",
+    })
   }
 
   // Validate predictedKTokens is defined and a number
@@ -55,7 +86,10 @@ export const createTask = (
       id,
       title: input.title,
       definition_of_done: input.definition_of_done,
+      test_cases: input.test_cases,
       description: input.description,
+      assigned_session: sessionId,
+      assigned_model: selectAssignedModel(input.predictedKTokens),
       estimation,
       comments: [],
       status: "backlog" as const,

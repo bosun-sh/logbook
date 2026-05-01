@@ -25,11 +25,14 @@ interface RawTask {
   milestone: string
   id: string
   title: string
-  definition_of_done: string
+  definition_of_done: string[]
+  test_cases?: string[]
   description: string
+  assigned_session?: string
+  assigned_model?: string
   estimation: number
   comments: unknown[]
-  assignee: RawAgent
+  assignee?: RawAgent
   status: string
   in_progress_since?: string
 }
@@ -76,8 +79,11 @@ const reviewTask: RawTask = {
   milestone: original.milestone,
   id: reviewId,
   title: `Review: ${original.title}`,
-  definition_of_done: "Review approved",
+  definition_of_done: ["Review approved"],
+  test_cases: [],
   description: `Review task for ${original.id}`,
+  assigned_session: original.assigned_session ?? original.assignee?.id ?? "",
+  assigned_model: original.assigned_model ?? "claude-sonnet-4-6",
   estimation: 1,
   comments: [],
   assignee: original.assignee,

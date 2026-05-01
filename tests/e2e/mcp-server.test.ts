@@ -45,7 +45,8 @@ const validCreateParams = {
   project: "test-project",
   milestone: "m1",
   title: "Test task",
-  definition_of_done: "It works",
+  definition_of_done: ["It works"],
+  test_cases: ["It does not regress"],
   description: "A task for testing",
   predictedKTokens: 1,
 }
@@ -89,9 +90,13 @@ describe("MCP server / JSON-RPC e2e", () => {
       params: validCreateParams,
     })
     expect(isSuccess(res)).toBe(true)
-    const result = (res as JsonRpcSuccess).result as { task: { id: string; status: string } }
+    const result = (res as JsonRpcSuccess).result as {
+      task: { id: string; status: string; assigned_session: string; assigned_model: string }
+    }
     expect(typeof result.task.id).toBe("string")
     expect(result.task.status).toBe("backlog")
+    expect(result.task.assigned_session).toBeDefined()
+    expect(result.task.assigned_model).toBeDefined()
   })
 
   // -------------------------------------------------------------------------

@@ -6,10 +6,14 @@ import { TaskRepository } from "./ports.js"
 export interface EditTaskInput {
   title?: string
   description?: string
-  definition_of_done?: string
+  definition_of_done?: string[] | string
+  test_cases?: string[] | string
   predictedKTokens?: number
   priority?: number
 }
+
+const normalizeStringArray = (value: string | string[]): string[] =>
+  Array.isArray(value) ? value : [value]
 
 /**
  * Edits mutable fields of an existing task without changing its status.
@@ -34,10 +38,14 @@ export const editTask = (
     return Effect.flatMap(estimateFromKTokens(updates.predictedKTokens), (estimation) =>
       Effect.flatMap(TaskRepository, (repo) =>
         Effect.flatMap(repo.findById(id), (task) => {
-          const { predictedKTokens: _, ...rest } = updates
+          const { predictedKTokens: _, definition_of_done, test_cases, ...rest } = updates
           const updatedTask: Task = {
             ...task,
             ...rest,
+            ...(definition_of_done !== undefined
+              ? { definition_of_done: normalizeStringArray(definition_of_done) }
+              : {}),
+            ...(test_cases !== undefined ? { test_cases: normalizeStringArray(test_cases) } : {}),
             estimation,
           }
           return Effect.flatMap(repo.update(updatedTask), () => Effect.succeed(updatedTask))
@@ -49,9 +57,14 @@ export const editTask = (
   // No estimation to derive, proceed directly with find and update
   return Effect.flatMap(TaskRepository, (repo) =>
     Effect.flatMap(repo.findById(id), (task) => {
+      const { definition_of_done, test_cases, ...rest } = updates
       const updatedTask: Task = {
         ...task,
-        ...updates,
+        ...rest,
+        ...(definition_of_done !== undefined
+          ? { definition_of_done: normalizeStringArray(definition_of_done) }
+          : {}),
+        ...(test_cases !== undefined ? { test_cases: normalizeStringArray(test_cases) } : {}),
       }
       return Effect.flatMap(repo.update(updatedTask), () => Effect.succeed(updatedTask))
     })

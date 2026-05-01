@@ -15,7 +15,8 @@ const validCreateParams = {
   project: "test-project",
   milestone: "m1",
   title: "Assignment test task",
-  definition_of_done: "It works",
+  definition_of_done: ["It works"],
+  test_cases: ["It does not regress"],
   description: "A task for assignment lifecycle testing",
   predictedKTokens: 1,
 }
@@ -94,6 +95,8 @@ describe("task assignment lifecycle / e2e", () => {
       expect(isSuccess(res)).toBe(true)
       const task = ((res as JsonRpcSuccess).result as { task: Record<string, unknown> }).task
       expect(task.assignee).toBeUndefined()
+      expect(task.assigned_session).toBeDefined()
+      expect(task.assigned_model).toBeDefined()
     })
 
     test("task in todo has no assignee", async () => {

@@ -38,17 +38,18 @@ Required arguments:
   --project <name>          Project name (e.g., "myproject")
   --milestone <name>       Milestone name (e.g., "v1")
   --title <text>           Task title
-  --definition-of-done <text>  What "done" means for this task
+  --definition-of-done <text|json-array>  What "done" means for this task
   --description <text>     Detailed description
   --predicted-k-tokens <n> Estimated context size in thousands of tokens (drives model selection)
 
 Optional arguments:
+  --test-cases <text|json-array>  Test cases for the task (defaults to [])
   --priority <n>           Priority (higher = more urgent, default: 0)
 
 Example:
   logbook create-task --project myproject --milestone v1 --title "Fix bug" \\
-    --definition-of-done "Bug fixed and tested" --description "Details..." \\
-    --predicted-k-tokens 3
+    --definition-of-done '["Bug fixed and tested"]' --test-cases '["Regression test passes"]' \\
+    --description "Details..." --predicted-k-tokens 3
 
 ### logbook list-tasks
 
@@ -115,7 +116,8 @@ Required arguments:
 Optional arguments:
   --title <text>               New title
   --description <text>         New description
-  --definition-of-done <text>  New definition of done
+  --definition-of-done <text|json-array>  New definition of done
+  --test-cases <text|json-array>          New test cases
   --predicted-k-tokens <n>     New predicted context size (will recalculate estimation)
   --priority <n>              New priority
 
@@ -275,6 +277,19 @@ const getOrCreateSession = async (explicitSessionId: string | null): Promise<str
   return newSession
 }
 
+const parseStringList = (value: string | undefined): string[] => {
+  if (value === undefined || value === "") {
+    return []
+  }
+  try {
+    const parsed = JSON.parse(value)
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item)).filter((item) => item.length > 0)
+    }
+  } catch {}
+  return [value]
+}
+
 const _saveSession = async (sessionId: string): Promise<void> => {
   await writeFile(SESSION_FILE, JSON.stringify({ sessionId }), "utf8")
 }
@@ -382,7 +397,8 @@ const runCommand = async (args: CliArgs): Promise<void> => {
           project: args.commandArgs.project,
           milestone: args.commandArgs.milestone,
           title: args.commandArgs.title,
-          definition_of_done: args.commandArgs["definition-of-done"],
+          definition_of_done: parseStringList(args.commandArgs["definition-of-done"]),
+          test_cases: parseStringList(args.commandArgs["test-cases"]),
           description: args.commandArgs.description,
           predictedKTokens: parseInt(args.commandArgs["predicted-k-tokens"] ?? "0", 10),
           priority: args.commandArgs.priority ? parseInt(args.commandArgs.priority, 10) : 0,
@@ -391,7 +407,7 @@ const runCommand = async (args: CliArgs): Promise<void> => {
           !input.project ||
           !input.milestone ||
           !input.title ||
-          !input.definition_of_done ||
+          input.definition_of_done.length === 0 ||
           !input.description ||
           !input.predictedKTokens
         ) {
@@ -434,7 +450,9 @@ const runCommand = async (args: CliArgs): Promise<void> => {
         if (args.commandArgs.title) input.title = args.commandArgs.title
         if (args.commandArgs.description) input.description = args.commandArgs.description
         if (args.commandArgs["definition-of-done"])
-          input.definition_of_done = args.commandArgs["definition-of-done"]
+          input.definition_of_done = parseStringList(args.commandArgs["definition-of-done"])
+        if (args.commandArgs["test-cases"])
+          input.test_cases = parseStringList(args.commandArgs["test-cases"])
         if (args.commandArgs["predicted-k-tokens"])
           input.predictedKTokens = parseInt(args.commandArgs["predicted-k-tokens"], 10)
         if (args.commandArgs.priority) input.priority = parseInt(args.commandArgs.priority, 10)

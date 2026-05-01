@@ -53,8 +53,14 @@ describe("editTask / happy path", () => {
 
   test("edits definition_of_done", async () => {
     const task = await seedTask()
-    const updated = await run(editTask(task.id, { definition_of_done: "New DoD" }))
-    expect(updated.definition_of_done).toBe("New DoD")
+    const updated = await run(editTask(task.id, { definition_of_done: ["New DoD"] }))
+    expect(updated.definition_of_done).toEqual(["New DoD"])
+  })
+
+  test("edits test_cases", async () => {
+    const task = await seedTask()
+    const updated = await run(editTask(task.id, { test_cases: ["new test"] }))
+    expect(updated.test_cases).toEqual(["new test"])
   })
 
   // 8 kTokens → ratio=2.5, scaled=3.2, nearest Fibonacci=3
