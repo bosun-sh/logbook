@@ -43,9 +43,16 @@ describe("toolEditTask / happy path", () => {
 
   test("edits definition_of_done", async () => {
     const task = await seedTask()
-    const result = await toolEditTask({ id: task.id, definition_of_done: "New DoD" }, layer)
+    const result = await toolEditTask({ id: task.id, definition_of_done: ["New DoD"] }, layer)
     const updated = result.task as Record<string, unknown>
-    expect(updated.definition_of_done).toBe("New DoD")
+    expect(updated.definition_of_done).toEqual(["New DoD"])
+  })
+
+  test("edits test_cases", async () => {
+    const task = await seedTask()
+    const result = await toolEditTask({ id: task.id, test_cases: ["new test"] }, layer)
+    const updated = result.task as Record<string, unknown>
+    expect(updated.test_cases).toEqual(["new test"])
   })
 
   test("edits estimation via predictedKTokens (8 → 3)", async () => {

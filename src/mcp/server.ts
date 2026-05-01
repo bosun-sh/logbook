@@ -150,7 +150,13 @@ const TOOLS_LIST = [
         project: { type: "string" },
         milestone: { type: "string" },
         title: { type: "string" },
-        definition_of_done: { type: "string" },
+        definition_of_done: {
+          oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+        },
+        test_cases: {
+          oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+          description: "Optional test cases for the task.",
+        },
         description: { type: "string" },
         predictedKTokens: { type: "number" },
       },
@@ -197,7 +203,12 @@ const TOOLS_LIST = [
         id: { type: "string" },
         title: { type: "string" },
         description: { type: "string" },
-        definition_of_done: { type: "string" },
+        definition_of_done: {
+          oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+        },
+        test_cases: {
+          oneOf: [{ type: "string" }, { type: "array", items: { type: "string" } }],
+        },
         predictedKTokens: { type: "number" },
       },
     },

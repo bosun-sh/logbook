@@ -16,7 +16,8 @@ const validInput = {
   project: "alpha",
   milestone: "m1",
   title: "My task",
-  definition_of_done: "It passes tests",
+  definition_of_done: ["It passes tests"],
+  test_cases: ["The happy path passes"],
   description: "Some description",
   predictedKTokens: 8,
 }
@@ -36,6 +37,18 @@ describe("toolCreateTask / happy path", () => {
     const result = await toolCreateTask(validInput, "session-abc", layer)
     const task = result.task as Record<string, unknown>
     expect(task.assignee).toBeUndefined()
+  })
+
+  test("assigned_session is set from the caller", async () => {
+    const result = await toolCreateTask(validInput, "session-abc", layer)
+    const task = result.task as Record<string, unknown>
+    expect(task.assigned_session).toBe("session-abc")
+  })
+
+  test("assigned_model is derived from predictedKTokens", async () => {
+    const result = await toolCreateTask(validInput, "session-abc", layer)
+    const task = result.task as Record<string, unknown>
+    expect(task.assigned_model).toBe("claude-sonnet-4-6")
   })
 
   test("task id is a non-empty string", async () => {
@@ -63,13 +76,7 @@ const expectThrows = async (fn: () => unknown) => {
 }
 
 describe("toolCreateTask / Zod validation rejects", () => {
-  const requiredStringFields = [
-    "project",
-    "milestone",
-    "title",
-    "definition_of_done",
-    "description",
-  ] as const
+  const requiredStringFields = ["project", "milestone", "title", "description"] as const
 
   for (const field of requiredStringFields) {
     test(`empty ${field} → throws ZodError`, async () => {
@@ -82,6 +89,16 @@ describe("toolCreateTask / Zod validation rejects", () => {
       await expectThrows(() => toolCreateTask(rest, "s1", layer))
     })
   }
+
+  test("empty definition_of_done array → throws ZodError", async () => {
+    const input = { ...validInput, definition_of_done: [] as string[] }
+    await expectThrows(() => toolCreateTask(input, "s1", layer))
+  })
+
+  test("missing definition_of_done → throws ZodError", async () => {
+    const { definition_of_done: _omitted, ...rest } = validInput
+    await expectThrows(() => toolCreateTask(rest, "s1", layer))
+  })
 
   test("non-positive predictedKTokens (0) → throws ZodError", async () => {
     const input = { ...validInput, predictedKTokens: 0 }

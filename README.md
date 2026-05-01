@@ -242,8 +242,11 @@ type Task = {
   milestone: string,
   id: string,
   title: string,
-  definition_of_done: string,
+  definition_of_done: string[],
+  test_cases: string[],
   description: string,
+  assigned_session: string, // session id recorded at creation time
+  assigned_model: string,    // model recorded at creation time
   estimation: number,      // fibonacci number derived from predictedKTokens at creation time
   comments: Comment[],
   assignee: Agent,
@@ -284,7 +287,8 @@ type CreateTaskInput = {
   project: string,
   milestone: string,
   title: string,
-  definition_of_done: string,
+  definition_of_done: string[],
+  test_cases: string[],
   description: string,
   predictedKTokens: number,  // positive number; server maps this to a Fibonacci estimation (max 20)
   priority?: number           // integer ≥ 0; defaults to 0
@@ -296,7 +300,8 @@ type EditTask = (id: string, updates: EditTaskInput) => Task
 type EditTaskInput = {
   title?: string,
   description?: string,
-  definition_of_done?: string,
+  definition_of_done?: string[],
+  test_cases?: string[],
   predictedKTokens?: number,  // re-derives estimation if provided
   priority?: number            // integer ≥ 0; re-assigns priority if provided
 }

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const Version = "1.0.0"
+var Version = "dev"
 
 type CLI struct {
 	TasksFile string
@@ -170,7 +170,7 @@ func dispatchCommand(command string, commandArgs map[string]string, sessionID st
 		if err != nil {
 			return nil, err
 		}
-		task, err := CreateTask(input)
+		task, err := CreateTask(input, sessionID)
 		if err != nil {
 			return nil, err
 		}
@@ -223,6 +223,8 @@ func dispatchCommand(command string, commandArgs map[string]string, sessionID st
 }
 
 func parseCreateTaskInput(args map[string]string) (CreateTaskInput, error) {
+	dod := parseStringList(args["definition-of-done"])
+	testCases := parseStringList(args["test-cases"])
 	pkt, err := strconv.Atoi(args["predicted-k-tokens"])
 	if err != nil || pkt == 0 {
 		return CreateTaskInput{}, errors.New("Missing required arguments: project, milestone, title, definition-of-done, description, predicted-k-tokens")
@@ -231,14 +233,15 @@ func parseCreateTaskInput(args map[string]string) (CreateTaskInput, error) {
 	if args["priority"] != "" {
 		priority, _ = strconv.Atoi(args["priority"])
 	}
-	if args["project"] == "" || args["milestone"] == "" || args["title"] == "" || args["definition-of-done"] == "" || args["description"] == "" {
+	if args["project"] == "" || args["milestone"] == "" || args["title"] == "" || len(dod) == 0 || args["description"] == "" {
 		return CreateTaskInput{}, errors.New("Missing required arguments: project, milestone, title, definition-of-done, description, predicted-k-tokens")
 	}
 	return CreateTaskInput{
 		Project:          args["project"],
 		Milestone:        args["milestone"],
 		Title:            args["title"],
-		DefinitionOfDone: args["definition-of-done"],
+		DefinitionOfDone: dod,
+		TestCases:        testCases,
 		Description:      args["description"],
 		PredictedKTokens: pkt,
 		Priority:         priority,
@@ -304,7 +307,12 @@ func parseEditTaskInput(args map[string]string) (struct {
 		updates.Description = &v
 	}
 	if v, ok := args["definition-of-done"]; ok && v != "" {
-		updates.DefinitionOfDoD = &v
+		values := parseStringList(v)
+		updates.DefinitionOfDoD = &values
+	}
+	if v, ok := args["test-cases"]; ok && v != "" {
+		values := parseStringList(v)
+		updates.TestCases = &values
 	}
 	if v, ok := args["predicted-k-tokens"]; ok && v != "" {
 		n, err := strconv.Atoi(v)
@@ -330,6 +338,26 @@ func parseEditTaskInput(args map[string]string) (struct {
 		ID      string
 		Updates EditTaskInput
 	}{ID: id, Updates: updates}, nil
+}
+
+func parseStringList(raw string) []string {
+	if raw == "" {
+		return []string{}
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(raw), &parsed); err == nil {
+		if values, ok := parsed.([]any); ok {
+			out := make([]string, 0, len(values))
+			for _, item := range values {
+				s, _ := item.(string)
+				if s != "" {
+					out = append(out, s)
+				}
+			}
+			return out
+		}
+	}
+	return []string{raw}
 }
 
 func layerHooks(layer Layer) HookRunner {

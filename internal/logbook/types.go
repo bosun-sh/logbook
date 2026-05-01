@@ -101,8 +101,11 @@ type Task struct {
 	Milestone       string    `json:"milestone"`
 	ID              string    `json:"id"`
 	Title           string    `json:"title"`
-	DefinitionOfDoD string    `json:"definition_of_done"`
+	DefinitionOfDoD []string  `json:"definition_of_done"`
+	TestCases       []string  `json:"test_cases"`
 	Description     string    `json:"description"`
+	AssignedSession string    `json:"assigned_session"`
+	AssignedModel   string    `json:"assigned_model"`
 	Estimation      int       `json:"estimation"`
 	Comments        []Comment `json:"comments"`
 	Assignee        *Agent    `json:"assignee,omitempty"`
@@ -123,6 +126,12 @@ func (t Task) Clone() Task {
 	}
 	if t.Comments != nil {
 		cp.Comments = append([]Comment(nil), t.Comments...)
+	}
+	if t.DefinitionOfDoD != nil {
+		cp.DefinitionOfDoD = append([]string{}, t.DefinitionOfDoD...)
+	}
+	if t.TestCases != nil {
+		cp.TestCases = append([]string{}, t.TestCases...)
 	}
 	return cp
 }

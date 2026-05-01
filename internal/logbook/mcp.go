@@ -134,7 +134,7 @@ func (m MCP) dispatch(method string, params any) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		task, err := CreateTask(input)
+		task, err := CreateTask(input, m.SessionID)
 		if err != nil {
 			return nil, err
 		}
@@ -197,17 +197,18 @@ func parseCreateTaskParams(params any) (CreateTaskInput, error) {
 	project, _ := raw["project"].(string)
 	milestone, _ := raw["milestone"].(string)
 	title, _ := raw["title"].(string)
-	dod, _ := raw["definition_of_done"].(string)
+	dod := parseAnyStringList(raw["definition_of_done"])
+	testCases := parseAnyStringList(raw["test_cases"])
 	description, _ := raw["description"].(string)
 	pkt, _ := asInt(raw["predictedKTokens"])
 	priority, _ := asInt(raw["priority"])
-	if project == "" || milestone == "" || title == "" || dod == "" || description == "" || pkt <= 0 {
+	if project == "" || milestone == "" || title == "" || len(dod) == 0 || description == "" || pkt <= 0 {
 		return CreateTaskInput{}, errInvalidParams
 	}
 	if priority < 0 {
 		return CreateTaskInput{}, errInvalidParams
 	}
-	return CreateTaskInput{Project: project, Milestone: milestone, Title: title, DefinitionOfDone: dod, Description: description, PredictedKTokens: pkt, Priority: priority}, nil
+	return CreateTaskInput{Project: project, Milestone: milestone, Title: title, DefinitionOfDone: dod, TestCases: testCases, Description: description, PredictedKTokens: pkt, Priority: priority}, nil
 }
 
 func parseUpdateTaskParams(params any) (string, Status, *Comment, error) {
@@ -272,8 +273,13 @@ func parseEditTaskParams(params any) (struct {
 	if v, ok := raw["description"].(string); ok {
 		updates.Description = &v
 	}
-	if v, ok := raw["definition_of_done"].(string); ok {
-		updates.DefinitionOfDoD = &v
+	if v, ok := raw["definition_of_done"]; ok {
+		values := parseAnyStringList(v)
+		updates.DefinitionOfDoD = &values
+	}
+	if v, ok := raw["test_cases"]; ok {
+		values := parseAnyStringList(v)
+		updates.TestCases = &values
 	}
 	if v, ok := asInt(raw["predictedKTokens"]); ok {
 		if v <= 0 {
@@ -304,9 +310,9 @@ func toolsList() []map[string]any {
 	return []map[string]any{
 		{"name": "list_tasks", "description": "List tasks, optionally filtered by status. Defaults to in_progress.", "inputSchema": map[string]any{"type": "object", "properties": map[string]any{"status": map[string]any{"oneOf": []any{map[string]any{"type": "string", "enum": statusEnum}, map[string]any{"type": "string", "enum": []string{"*"}}}, "description": "Status filter. Use '*' for all tasks. Defaults to 'in_progress'."}}}},
 		{"name": "current_task", "description": "Return the highest-priority in_progress task for this session. Call this at session start before doing any work.", "inputSchema": map[string]any{"type": "object", "properties": map[string]any{}}},
-		{"name": "create_task", "description": "Create a new task in backlog. Set predictedKTokens to your estimated context use — this drives the Fibonacci estimation and model selection for sub-agents.", "inputSchema": map[string]any{"type": "object", "required": []string{"project", "milestone", "title", "definition_of_done", "description", "predictedKTokens"}, "properties": map[string]any{"project": map[string]any{"type": "string"}, "milestone": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "definition_of_done": map[string]any{"type": "string"}, "description": map[string]any{"type": "string"}, "predictedKTokens": map[string]any{"type": "number"}}}},
+		{"name": "create_task", "description": "Create a new task in backlog. Set predictedKTokens to your estimated context use — this drives the Fibonacci estimation and model selection for sub-agents.", "inputSchema": map[string]any{"type": "object", "required": []string{"project", "milestone", "title", "definition_of_done", "description", "predictedKTokens"}, "properties": map[string]any{"project": map[string]any{"type": "string"}, "milestone": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "definition_of_done": map[string]any{"oneOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}}, "test_cases": map[string]any{"oneOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}}, "description": map[string]any{"type": "string"}, "predictedKTokens": map[string]any{"type": "number"}}}},
 		{"name": "update_task", "description": "Transition a task's status. Attach a comment when moving to pending_review. Use need_info or blocked for side-exits from in_progress.", "inputSchema": map[string]any{"type": "object", "required": []string{"id", "new_status"}, "properties": map[string]any{"id": map[string]any{"type": "string"}, "new_status": map[string]any{"type": "string", "enum": statusEnum}, "comment": map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string", "format": "uuid", "description": "Existing comment id — provide only when replying to a need_info comment."}, "title": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}, "reply": map[string]any{"type": "string", "description": "Reply text — only meaningful when id refers to a need_info comment."}, "kind": map[string]any{"type": "string", "enum": []string{"need_info", "regular"}}}}}}},
-		{"name": "edit_task", "description": "Edit mutable fields of a task without changing its status.", "inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{"id": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "description": map[string]any{"type": "string"}, "definition_of_done": map[string]any{"type": "string"}, "predictedKTokens": map[string]any{"type": "number"}}}},
+		{"name": "edit_task", "description": "Edit mutable fields of a task without changing its status.", "inputSchema": map[string]any{"type": "object", "required": []string{"id"}, "properties": map[string]any{"id": map[string]any{"type": "string"}, "title": map[string]any{"type": "string"}, "description": map[string]any{"type": "string"}, "definition_of_done": map[string]any{"oneOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}}, "test_cases": map[string]any{"oneOf": []any{map[string]any{"type": "string"}, map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}}, "predictedKTokens": map[string]any{"type": "number"}}}},
 	}
 }
 
@@ -340,6 +346,32 @@ func asInt(v any) (int, bool) {
 		return int(n), err == nil
 	default:
 		return 0, false
+	}
+}
+
+func parseAnyStringList(v any) []string {
+	switch x := v.(type) {
+	case string:
+		return parseStringList(x)
+	case []any:
+		out := make([]string, 0, len(x))
+		for _, item := range x {
+			s, _ := item.(string)
+			if s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	case []string:
+		out := make([]string, 0, len(x))
+		for _, item := range x {
+			if item != "" {
+				out = append(out, item)
+			}
+		}
+		return out
+	default:
+		return []string{}
 	}
 }
 
