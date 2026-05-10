@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "ohtools": {
+      "source": "bosun-sh/skills",
+      "sourceType": "github",
+      "skillPath": "skills/ohtools/SKILL.md",
+      "computedHash": "70f0c2c4ae3ce56b04c69a934e308a26c806907e302db907c9681eee5e926b8b"
+    }
+  }
+}

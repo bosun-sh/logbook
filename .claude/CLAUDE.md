@@ -1,133 +1,107 @@
 # logbook
 
-File-system kanban board for autonomous AI agents. Tracks tasks across a structured lifecycle so agents and humans share a single source of truth without context bloat.
+File-system kanban board for autonomous AI agents. Tracks epics, stories, tasks, and context entries so agents and humans share a single source of truth without context bloat.
+
+## Entity Hierarchy
+
+```
+epic → story → task
+               task → context entries (attached)
+```
+
+All entities are stored as newline-delimited JSONL in `.logbook/storage/`:
+
+| File | Entity |
+|------|--------|
+| `epics.jsonl` | Epic |
+| `stories.jsonl` | Story |
+| `tasks.jsonl` | Task |
+| `context-entries.jsonl` | ContextEntry |
+| `external-links.jsonl` | ExternalLink (bidirectional sync mapping) |
+| `sync-events.jsonl` | SyncEvent |
+| `sync-conflicts.jsonl` | SyncConflict |
 
 ## CLI Usage
 
-The CLI provides the same functionality as MCP tools via command line:
-
-| Command | Description |
-|---------|-------------|
-| `logbook create-task` | Create a new task in backlog |
-| `logbook list-tasks` | List tasks by status (default: in_progress) |
-| `logbook current-task` | Get current in-progress task for session |
-| `logbook update-task` | Transition task status |
-| `logbook edit-task` | Edit task fields without changing status |
-| `logbook init` | Initialize project |
-
-### Examples
+All v2 commands use colon-separated tool IDs:
 
 ```bash
-# Create a task
-logbook create-task --project myproject --milestone v1 --title "Fix bug" \
-  --definition-of-done "Bug fixed and tested" --description "Details..." \
-  --predicted-k-tokens 3
+logbook workspace:init
+logbook workspace:status
 
-# List tasks
-logbook list-tasks --status in_progress
-logbook list-tasks --status "*"
-logbook list-tasks --status todo --project myproject
+logbook task:create --title "x" --description "y" \
+  --definition-of-done "z" --project p --milestone m
+logbook task:list --status "*"
+logbook task:current
+logbook task:update --id <uuid> --new-status in_progress
+logbook task:edit --id <uuid> --title "New title"
 
-# Get current task
-logbook current-task
+logbook epic:create --title "Auth" --description "..." --outcome "..."
+logbook story:create --epic-id <uuid> --title "..." --description "..." --user-value "..."
 
-# Update task status
-logbook update-task --id <uuid> --new-status in_progress
-logbook update-task --id <uuid> --new-status need_info \
-  --comment-title "Need info" --comment-content "What does X mean?"
+logbook context:create --title "..." --body "..."
+logbook context:attach --context-entry-id <uuid> --task-id <uuid>
 
-# Edit task
-logbook edit-task --id <uuid> --title "New title"
+logbook sync:linear:pull
+logbook sync:linear:push --dry-run
+logbook sync:linear:status --check-provider
+
+logbook hook:list
+```
+
+v1 aliases (`create-task`, `list-tasks`, etc.) remain registered and emit a `compatibility_mapping_applied` warning.
+
+## MCP Tools
+
+38 tools registered across 8 plugins. All use dotted lowercase IDs (`task.create`, `sync.linear.pull`, etc.).
+
+| Plugin | Tool IDs |
+|--------|---------|
+| task | `task.create`, `task.get`, `task.list`, `task.current`, `task.update`, `task.edit`, `task.assign.session`, `task.assign.model`, `task.assign.phase-model`, `task.estimate` |
+| epic | `epic.create`, `epic.get`, `epic.list`, `epic.update`, `epic.delete` |
+| story | `story.create`, `story.get`, `story.list`, `story.update`, `story.delete` |
+| context | `context.create`, `context.get`, `context.list`, `context.update`, `context.delete`, `context.attach`, `context.detach`, `context.search` |
+| sync | `sync.linear.pull`, `sync.linear.push`, `sync.linear.status`, `sync.conflicts.list`, `sync.conflicts.resolve` |
+| workspace | `workspace.init`, `workspace.status` |
+| hook | `hook.list`, `hook.run` |
+| plugin | `plugin.list` |
+
+All inputs are object-rooted and reject unknown fields. All outputs are `ToolResult<T>` envelopes:
+
+```ts
+{ ok: true, data: T, warnings?: ToolWarning[] }
+{ ok: false, error: { code: string, message: string, details?: Record<string, unknown> } }
 ```
 
 ## Stack
 
 - **Runtime**: Bun / TypeScript
 - **Effect system**: Effect.ts — all async operations and errors modeled as `Effect<A, E, R>`
-- **Architecture**: hexagonal (ports & adapters), vertical slices per domain concept (`task`, `hook`)
-- **Validation**: Zod at every system boundary (MCP input, filesystem reads)
-- **Persistence**: JSONL — one task per line, append-only writes, full file scan for reads
+- **Architecture**: ohtools plugin registry, hexagonal adapters (CLI + MCP), vertical slices per entity
+- **Validation**: Zod at every system boundary (MCP input, CLI flags, filesystem reads)
+- **Persistence**: JSONL — append-only, one record per line; DuckDB for optional ad-hoc queries
 
-## Core Types
+## Hooks
 
-```ts
-type Status = 'backlog' | 'todo' | 'need_info' | 'blocked' | 'in_progress' | 'pending_review' | 'done'
+JSON config + argv command array in `.logbook/hooks/<id>/`:
 
-type Comment = {
-  id: string
-  timestamp: Date
-  title: string
-  content: string
-  reply: string   // populated when responding to a need_info comment
-  kind: 'need_info' | 'regular'  // drives the reply cycle
-}
-
-type Agent = {
-  id: string        // session_id assigned by the server on connection
-  title: string
-  description: string
-}
-
-type Task = {
-  project: string
-  milestone: string
-  id: string
-  title: string
-  definition_of_done: string
-  description: string
-  estimation: number  // fibonacci number derived from predictedKTokens at creation time
-  comments: Comment[]
-  assignee?: Agent          // optional — set when a session claims the task
-  status: Status
-  in_progress_since?: Date  // set on entry to in_progress; drives FIFO in current_task
-  priority: number          // integer ≥ 0; higher = more urgent; defaults to 0
+```json
+{
+  "id": "review-spawn",
+  "event": "task.status_changed",
+  "condition": "new_status == 'pending_review'",
+  "command": ["bun", "run", ".logbook/hooks/review-spawn/script.ts"],
+  "timeoutMs": 5000
 }
 ```
-
-## MCP Tools
-
-| Tool | Signature | Notes |
-|------|-----------|-------|
-| `list_tasks` | `(status: Status \| '*') => Task[]` | defaults to `in_progress` |
-| `current_task` | `() => Task` | highest-priority in_progress task for the current session |
-| `update_task` | `(id, new_status, comment, sessionId) => void` | triggers lifecycle hooks; sessionId injected server-side; pass comment `id` + `reply` to close a `need_info` cycle |
-| `create_task` | `(input: CreateTaskInput, sessionId) => Task` | creates task in `backlog`; input requires `predictedKTokens` (server derives Fibonacci `estimation`) |
-| `edit_task` | `(id, updates: EditTaskInput) => Task` | edits mutable fields without status change; accepts optional `predictedKTokens` to re-derive estimation |
-
-Each MCP session is a distinct agent instance. The server assigns a `session_id` on connection and uses it to scope `current_task` — callers never pass an agent ID explicitly.
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `LOGBOOK_TASKS_FILE` | `./tasks.jsonl` | path to the JSONL task store |
-| `LOGBOOK_HOOKS_DIR` | `./hooks` | directory scanned for custom hook definitions |
-| `LOGBOOK_LOG_LEVEL` | `warn` | structured logger level: `debug`, `info`, `warn`, or `error` |
-
-## Hooks System
-
-Hooks execute before or after task lifecycle events. They are **stateless** — execute and forget.
-
-**Built-in hooks:**
-- `task.status_changed` → `need_info`: notifies the user with the blocking comment
-- `task.status_changed` → `pending_review`: spawns a reviewer sub-agent and creates a review task
-- Second task moved to `in_progress`: requires a justification comment before proceeding
-
-**Custom hooks** live under `hooks/<name>/` with two required files:
-
-```
-hooks/
-└── example_hook/
-    ├── config.yml   # required
-    └── script.ts    # any executable language
-```
-
-Minimal `config.yml`:
-```yaml
-event: task.status_changed
-condition: "new_status == 'need_info'"  # optional JS-like expression
-timeout_ms: 5000                         # optional, default 5000
-```
+| `LOGBOOK_WORKSPACE_ROOT` | `process.cwd()` | workspace root used by compiled binaries |
+| `LOGBOOK_LOG_LEVEL` | `warn` | log level: `debug`, `info`, `warn`, `error` |
+| `LINEAR_API_KEY` | — | Linear API token (or the var named in `linear.apiTokenEnv`) |
 
 ## Project Constitution
 
