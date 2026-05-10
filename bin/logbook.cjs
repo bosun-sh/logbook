@@ -13,7 +13,6 @@ const platformMap = {
     x64: "linux-x64",
   },
   win32: {
-    arm64: "win32-arm64",
     x64: "win32-x64",
   },
 }

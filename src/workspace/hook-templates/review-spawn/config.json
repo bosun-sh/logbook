@@ -1,0 +1,10 @@
+{
+  "id": "review-spawn",
+  "enabled": true,
+  "event": "task.status_changed",
+  "condition": {
+    "status": "pending_review"
+  },
+  "timeoutMs": 30000,
+  "command": ["bun", ".logbook/hooks/review-spawn/script.ts"]
+}

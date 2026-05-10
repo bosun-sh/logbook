@@ -1,6 +1,6 @@
 {
   "name": "@bosun-sh/logbook",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "description": "File-system kanban board CLI and MCP server for AI agents",
   "type": "module",
   "bin": {
@@ -10,7 +10,7 @@
   "files": [
     "bin/",
     "dist/",
-    "hooks/",
+    "src/workspace/hook-templates/",
     "LICENSE",
     "README.md"
   ],
@@ -24,7 +24,7 @@
   "scripts": {
     "build:binaries": "sh scripts/build-binaries.sh",
     "prepack": "sh scripts/build-binaries.sh",
-    "start": "bun src/mcp/server.ts",
+    "start": "bun src/workspace/bin-mcp.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:unit": "bun test tests/unit/",
@@ -40,7 +40,9 @@
     "publish:dev": "bun link ."
   },
   "dependencies": {
-    "effect": "^3.12.0",
+    "@bosun-sh/ohtools": "^0.1.0",
+    "@duckdb/node-api": "1.5.2-r.1",
+    "effect": "3.21.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
