@@ -6,5 +6,5 @@
     "status": "need_info"
   },
   "timeoutMs": 5000,
-  "command": ["bun", ".logbook/hooks/need-info-notify/script.ts"]
+  "command": ["node", ".logbook/hooks/need-info-notify/script.mjs"]
 }

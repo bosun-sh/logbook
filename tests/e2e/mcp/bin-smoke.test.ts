@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-const BIN_MCP_ENTRY = join(import.meta.dir, "../../../src/workspace/bin-mcp.ts")
+const BIN_CLI_ENTRY = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
 
 interface JsonRpcRequest {
   jsonrpc: "2.0"
@@ -27,7 +27,7 @@ interface JsonRpcError {
 type JsonRpcResponse = JsonRpcSuccess | JsonRpcError
 
 const spawnMcpServer = (workspaceRoot: string) => {
-  const proc = Bun.spawn(["bun", "run", BIN_MCP_ENTRY], {
+  const proc = Bun.spawn(["bun", "run", BIN_CLI_ENTRY, "mcp"], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
@@ -66,7 +66,7 @@ const spawnMcpServer = (workspaceRoot: string) => {
   return { send, kill, exited: proc.exited }
 }
 
-describe("bin-mcp smoke tests", () => {
+describe("logbook mcp smoke tests", () => {
   let workspaceRoot: string | undefined
   let server: ReturnType<typeof spawnMcpServer> | undefined
 
@@ -80,7 +80,7 @@ describe("bin-mcp smoke tests", () => {
   })
 
   test("initialize returns serverInfo.version 2.0.0", async () => {
-    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-mcp-"))
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-mcp-mode-"))
     server = spawnMcpServer(workspaceRoot)
 
     const response = await server.send({ jsonrpc: "2.0", id: 1, method: "initialize" })
@@ -95,7 +95,7 @@ describe("bin-mcp smoke tests", () => {
   })
 
   test("tools/list returns dotted tool IDs including task.create", async () => {
-    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-mcp-tools-"))
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-mcp-mode-tools-"))
     server = spawnMcpServer(workspaceRoot)
 
     const response = await server.send({ jsonrpc: "2.0", id: 1, method: "tools/list" })
@@ -116,7 +116,7 @@ describe("bin-mcp smoke tests", () => {
   })
 
   test("unknown method returns JSON-RPC error response", async () => {
-    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-mcp-err-"))
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-mcp-mode-err-"))
     server = spawnMcpServer(workspaceRoot)
 
     const response = await server.send({
@@ -129,11 +129,11 @@ describe("bin-mcp smoke tests", () => {
   })
 
   test("invalid JSON line returns parse error", async () => {
-    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-mcp-parse-"))
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-mcp-mode-parse-"))
     server = spawnMcpServer(workspaceRoot)
 
     server.send({ jsonrpc: "2.0", id: 0, method: "initialize" }).catch(() => {})
-    const proc = Bun.spawn(["bun", "run", BIN_MCP_ENTRY], {
+    const proc = Bun.spawn(["bun", "run", BIN_CLI_ENTRY, "mcp"], {
       stdin: new TextEncoder().encode("not valid json\n"),
       stdout: "pipe",
       stderr: "pipe",

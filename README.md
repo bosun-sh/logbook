@@ -17,7 +17,7 @@ v2 adds: *epics → stories → tasks* hierarchy, reusable *context entries* (kn
 ## quickstart
 
 ```bash
-bun add @bosun-sh/logbook            # install
+npm install -g @bosun-sh/logbook     # install the CLI
 logbook workspace:init               # scaffold .logbook/ in the current directory
 logbook task:create \
   --title "Implement login endpoint" \
@@ -28,6 +28,9 @@ logbook task:list --status "*"
 ```
 
 see [quickstart.md](quickstart.md) for the full walkthrough including Linear sync.
+
+for one-off local use, run commands through your package manager, for example
+`npx @bosun-sh/logbook --help` or `bunx @bosun-sh/logbook --help`.
 
 ## workspace layout
 
@@ -40,10 +43,10 @@ see [quickstart.md](quickstart.md) for the full walkthrough including Linear syn
 ├── hooks/
 │   ├── review-spawn/     # spawns a reviewer agent on pending_review
 │   │   ├── config.json
-│   │   └── script.ts
+│   │   └── script.mjs
 │   └── need-info-notify/ # notifies user when a task needs info
 │       ├── config.json
-│       └── script.ts
+│       └── script.mjs
 └── storage/
     ├── epics.jsonl
     ├── stories.jsonl
@@ -62,7 +65,7 @@ add `.logbook/storage/` to `.gitignore` to keep runtime data out of version cont
 
 ## mcp tools by plugin
 
-connect `logbook-mcp` as an MCP server and call any of the 38 tools below.
+connect `logbook mcp` as an MCP server and call any of the 38 tools below.
 
 ### task plugin
 
@@ -249,8 +252,8 @@ hooks execute shell commands on task lifecycle events. configuration lives in `.
 {
   "id": "need-info-notify",
   "event": "task.status_changed",
-  "condition": "new_status == 'need_info'",
-  "command": ["bun", "run", ".logbook/hooks/need-info-notify/script.ts"],
+  "condition": { "status": "need_info" },
+  "command": ["node", ".logbook/hooks/need-info-notify/script.mjs"],
   "timeoutMs": 5000
 }
 ```
@@ -296,7 +299,7 @@ see `CHANGELOG.md` for the full v2.0.0 breaking-change list.
 
 ## stack
 
-- **runtime**: Bun / TypeScript
+- **runtime**: Node.js / TypeScript
 - **effect system**: Effect.ts — all async operations and errors modeled as `Effect<A, E, R>`
 - **architecture**: ohtools plugin registry, hexagonal adapters (CLI + MCP), vertical slices per entity
 - **persistence**: JSONL — append-only, one record per line, full-scan reads; DuckDB for optional ad-hoc queries

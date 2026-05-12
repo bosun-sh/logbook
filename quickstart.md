@@ -3,12 +3,12 @@
 ## 1. install
 
 ```bash
-bun add @bosun-sh/logbook
+npm install -g @bosun-sh/logbook
 # or
-npm install @bosun-sh/logbook
+bunx @bosun-sh/logbook --help
 ```
 
-binaries are included in the package — no separate Bun install required for runtime.
+the published CLI runs on Node.js; no Bun install is required for runtime.
 
 ## 2. initialize the workspace
 
@@ -32,7 +32,8 @@ add `.logbook/storage/` to `.gitignore`:
 {
   "mcpServers": {
     "logbook": {
-      "command": "logbook-mcp"
+      "command": "logbook",
+      "args": ["mcp"]
     }
   }
 }
@@ -45,7 +46,7 @@ add `.logbook/storage/` to `.gitignore`:
   "mcp": {
     "logbook": {
       "type": "local",
-      "command": ["logbook-mcp"],
+      "command": ["logbook", "mcp"],
       "enabled": true
     }
   }

@@ -6,5 +6,5 @@
     "status": "pending_review"
   },
   "timeoutMs": 30000,
-  "command": ["bun", ".logbook/hooks/review-spawn/script.ts"]
+  "command": ["node", ".logbook/hooks/review-spawn/script.mjs"]
 }

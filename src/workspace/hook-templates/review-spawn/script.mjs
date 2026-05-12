@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { execFileSync } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
@@ -9,46 +9,24 @@ const dataFile = join(workspaceRoot, ".logbook", "storage", "tasks.jsonl")
 
 if (taskId === "") process.exit(0)
 
-const readLines = async (filePath: string): Promise<readonly string[]> => {
-  const content = await readFile(filePath, "utf8").catch((e: unknown) => {
+const readLines = async (filePath) => {
+  const content = await readFile(filePath, "utf8").catch((e) => {
     if (isEnoent(e)) return ""
     throw e
   })
   return content.split("\n").filter((l) => l.trim() !== "")
 }
 
-interface RawComment {
-  id: string
-  kind: string
-  replies?: Array<{ content: string }>
-}
-
-interface RawTask {
-  id: string
-  kind: "task"
-  project: string
-  milestone: string
-  title: string
-  definitionOfDone: string
-  description: string
-  sessionId?: string
-  model?: unknown
-  estimate?: unknown
-  comments: RawComment[]
-  assignee?: unknown
-  status: string
-}
-
-const parseTask = (line: string): RawTask | null => {
+const parseTask = (line) => {
   try {
-    const parsed = JSON.parse(line) as unknown
+    const parsed = JSON.parse(line)
     if (
       typeof parsed === "object" &&
       parsed !== null &&
       !Array.isArray(parsed) &&
-      (parsed as Record<string, unknown>).kind === "task"
+      parsed.kind === "task"
     ) {
-      return parsed as RawTask
+      return parsed
     }
     return null
   } catch {
@@ -56,12 +34,11 @@ const parseTask = (line: string): RawTask | null => {
   }
 }
 
-const isEnoent = (e: unknown): boolean =>
-  typeof e === "object" && e !== null && (e as { code?: unknown }).code === "ENOENT"
+const isEnoent = (e) => typeof e === "object" && e !== null && e.code === "ENOENT"
 
 const lines = await readLines(dataFile)
 
-let original: RawTask | null = null
+let original = null
 for (const line of lines) {
   const task = parseTask(line)
   if (task !== null && task.id === taskId) {
@@ -88,7 +65,7 @@ const logbookBin = join(workspaceRoot, "node_modules", ".bin", "logbook")
 execFileSync(
   logbookBin,
   [
-    "task.create",
+    "task:create",
     `--title=Review: ${original.title}`,
     `--description=Review task for ${original.id}`,
     "--definitionOfDone=Review approved",

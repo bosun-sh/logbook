@@ -11,6 +11,28 @@ const DEFAULT_MAX_STDIN_JSON_BYTES = 1_048_576
 const DEFAULT_MAX_ARGS = 200
 const DEFAULT_MAX_RESULT_JSON_BYTES = 4_194_304
 const textEncoder = new TextEncoder()
+export const LOGBOOK_VERSION = "2.0.0"
+export const LOGBOOK_CLI_HELP = `logbook ${LOGBOOK_VERSION}
+
+Usage:
+  logbook <command> [--flag value]
+  logbook mcp
+  logbook --help
+  logbook --version
+
+Common commands:
+  logbook workspace:init
+  logbook workspace:status
+  logbook task:create --title "..." --description "..." --definition-of-done "..."
+  logbook task:list --status "*"
+  logbook task:current
+  logbook sync:linear:status
+
+MCP:
+  Configure MCP clients to run: logbook mcp
+
+All tool commands write one JSON envelope to stdout.
+`
 
 type Write = (chunk: string) => void
 

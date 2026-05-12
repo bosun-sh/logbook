@@ -85,4 +85,15 @@ describe("bin-cli smoke tests", () => {
     expect(exitCode).toBe(1)
     expect(result.ok).toBe(false)
   })
+
+  test("help and version flags print public CLI affordances", async () => {
+    const help = await runCli(["--help"])
+    expect(help.exitCode).toBe(0)
+    expect(help.stdout).toContain("logbook mcp")
+    expect(help.stdout).toContain("logbook --version")
+
+    const version = await runCli(["--version"])
+    expect(version.exitCode).toBe(0)
+    expect(version.stdout.trim()).toBe("2.0.0")
+  })
 })
