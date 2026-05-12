@@ -55,17 +55,7 @@ export const pullLinearSync = (
     const limit = Math.min(input.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
     const client = (yield* LinearGraphQLClientTag) as unknown as LinearGraphQLClient
     const response = yield* Effect.either(
-      client.request<LinearIssuesResponse>({
-        operationName: "LinearPullIssues",
-        query: LINEAR_PULL_ISSUES_QUERY,
-        variables: {
-          first: limit,
-          ...(input.since === undefined ? {} : { since: input.since }),
-          ...(input.teamId === undefined ? {} : { teamId: input.teamId }),
-          ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
-          ...(input.cursor === undefined ? {} : { after: input.cursor.cursor }),
-        },
-      })
+      client.request<LinearIssuesResponse>(linearPullIssuesRequest(input, limit))
     )
     if (response._tag === "Left") {
       return providerFailure(response.left)
@@ -445,9 +435,37 @@ const repositoryError = (cause: unknown): ToolResult<never> => ({
   },
 })
 
-const LINEAR_PULL_ISSUES_QUERY = `
-query LinearPullIssues($first: Int!, $after: String, $since: DateTime, $teamId: String, $projectId: String) {
-  issues(first: $first, after: $after, filter: { updatedAt: { gte: $since }, team: { id: { eq: $teamId } }, project: { id: { eq: $projectId } } }) {
+const linearPullIssuesRequest = (input: LinearPullInput, limit: number) => {
+  const filters = [
+    input.since === undefined ? undefined : "updatedAt: { gte: $since }",
+    input.teamId === undefined ? undefined : "team: { id: { eq: $teamId } }",
+    input.projectId === undefined ? undefined : "project: { id: { eq: $projectId } }",
+  ].filter((filter): filter is string => filter !== undefined)
+
+  const declarations = [
+    "$first: Int!",
+    "$after: String",
+    input.since === undefined ? undefined : "$since: DateTime",
+    input.teamId === undefined ? undefined : "$teamId: ID",
+    input.projectId === undefined ? undefined : "$projectId: ID",
+  ].filter((declaration): declaration is string => declaration !== undefined)
+
+  return {
+    operationName: "LinearPullIssues",
+    query: linearPullIssuesQuery(declarations, filters),
+    variables: {
+      first: limit,
+      ...(input.cursor === undefined ? {} : { after: input.cursor.cursor }),
+      ...(input.since === undefined ? {} : { since: input.since }),
+      ...(input.teamId === undefined ? {} : { teamId: input.teamId }),
+      ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+    },
+  }
+}
+
+const linearPullIssuesQuery = (declarations: readonly string[], filters: readonly string[]) => `
+query LinearPullIssues(${declarations.join(", ")}) {
+  issues(first: $first, after: $after${filters.length === 0 ? "" : `, filter: { ${filters.join(", ")} }`}) {
     nodes {
       id
       identifier

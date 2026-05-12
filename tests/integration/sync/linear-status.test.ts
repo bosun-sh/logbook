@@ -235,4 +235,22 @@ describe("Linear status sync", () => {
       },
     })
   })
+
+  test("loads the Linear token from local .env when the shell env is unset", async () => {
+    const root = await makeWorkspace()
+    await writeFile(join(root, ".env"), "LOGBOOK_LINEAR_STATUS_TOKEN=token\n", "utf8")
+
+    const result = await runWithLayers(getLinearStatus({ checkProvider: true }))
+
+    expect(result).toMatchObject({
+      ok: true,
+      data: {
+        status: {
+          configured: true,
+          authenticated: true,
+          reachable: true,
+        },
+      },
+    })
+  })
 })

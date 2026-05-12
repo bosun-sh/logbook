@@ -1,11 +1,10 @@
-import { readFile } from "node:fs/promises"
-import { resolve } from "node:path"
 import type { ExternalLink } from "@logbook/context/schema.js"
 import type { ToolResult } from "@logbook/shared/result.js"
 import { nowIso } from "@logbook/shared/time.js"
 import { createSyncConflict } from "@logbook/sync/conflicts.js"
 import { appendSyncEvent } from "@logbook/sync/events.js"
 import { findExternalLink, upsertExternalLink } from "@logbook/sync/external-links.js"
+import { readLinearApiToken, readLinearWorkspaceConfig } from "@logbook/sync/linear/config.js"
 import { type LinearIssueRecord, mapTaskToLinearIssueInput } from "@logbook/sync/linear/mapping.js"
 import type { LinearGraphQLClient } from "@logbook/sync/linear/transport.js"
 import type {
@@ -54,26 +53,7 @@ const TaskRepository = Context.GenericTag<TaskRepositoryShape>("TaskRepository")
 const SyncEventRepository = Context.GenericTag<SyncEventRepositoryShape>("SyncEventRepository")
 const LinearGraphQLClientTag = Context.GenericTag<LinearGraphQLClient>("LinearGraphQLClient")
 
-type GetWorkspaceLinearConfigResult =
-  | { readonly ok: true; readonly data: LinearWorkspaceConfig | undefined }
-  | { readonly ok: false; readonly error: ToolError }
-
 type ToolError = Extract<ToolResult<never>, { ok: false }>["error"]
-
-type LinearWorkspaceConfig = {
-  readonly apiTokenEnv: string
-  readonly workspaceId?: string
-  readonly defaultTeamId?: string
-  readonly defaultProjectId?: string
-  readonly statusMapping?: {
-    readonly linearStateTypeToTaskStatus?: Record<string, Task["status"]>
-    readonly linearStateIdToTaskStatus?: Record<string, Task["status"]>
-    readonly taskStatusToLinearStateId?: Record<Task["status"], string>
-  }
-  readonly labelMapping?: {
-    readonly labelNameToTopic?: Record<string, string>
-  }
-}
 
 type LinearIssueLookupResponse = {
   readonly issue?: LinearIssueRecord | null
@@ -131,7 +111,7 @@ export const pushLinearSync = (
     const statusMapping = config?.statusMapping
     const labelMapping = config?.labelMapping
 
-    if (resolveLinearToken(config) === undefined) {
+    if (readLinearApiToken(config) === undefined) {
       return providerError("auth_failed", "Linear API token is required.", {
         provider: LINEAR_PROVIDER_ID,
         reason: "missing_token",
@@ -756,88 +736,6 @@ const isProviderError = (value: unknown): value is SyncProviderError =>
   typeof value.retryable === "boolean" &&
   typeof value.message === "string"
 
-const resolveLinearToken = (config: LinearWorkspaceConfig | undefined): string | undefined => {
-  const envName = config?.apiTokenEnv ?? "LINEAR_API_KEY"
-  const value = process.env[envName]
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined
-}
-
-const readLinearWorkspaceConfig = async (): Promise<GetWorkspaceLinearConfigResult> => {
-  const path = resolve(process.cwd(), ".logbook/config.json")
-  try {
-    const content = await readFile(path, "utf8")
-    const parsed = JSON.parse(content) as unknown
-    if (!isRecord(parsed) || parsed.schemaVersion !== "2") {
-      return { ok: true, data: undefined }
-    }
-    if (!isRecord(parsed.linear)) {
-      return { ok: true, data: undefined }
-    }
-
-    const linear = parsed.linear
-    return {
-      ok: true,
-      data: {
-        apiTokenEnv:
-          typeof linear.apiTokenEnv === "string" && linear.apiTokenEnv.length > 0
-            ? linear.apiTokenEnv
-            : "LINEAR_API_KEY",
-        ...(typeof linear.workspaceId === "string" && linear.workspaceId.length > 0
-          ? { workspaceId: linear.workspaceId }
-          : {}),
-        ...(typeof linear.defaultTeamId === "string" && linear.defaultTeamId.length > 0
-          ? { defaultTeamId: linear.defaultTeamId }
-          : {}),
-        ...(typeof linear.defaultProjectId === "string" && linear.defaultProjectId.length > 0
-          ? { defaultProjectId: linear.defaultProjectId }
-          : {}),
-        ...(isRecord(linear.statusMapping)
-          ? {
-              statusMapping: {
-                ...(isRecord(linear.statusMapping.linearStateTypeToTaskStatus)
-                  ? {
-                      linearStateTypeToTaskStatus: linear.statusMapping
-                        .linearStateTypeToTaskStatus as Record<string, Task["status"]>,
-                    }
-                  : {}),
-                ...(isRecord(linear.statusMapping.linearStateIdToTaskStatus)
-                  ? {
-                      linearStateIdToTaskStatus: linear.statusMapping
-                        .linearStateIdToTaskStatus as Record<string, Task["status"]>,
-                    }
-                  : {}),
-                ...(isRecord(linear.statusMapping.taskStatusToLinearStateId)
-                  ? {
-                      taskStatusToLinearStateId: linear.statusMapping
-                        .taskStatusToLinearStateId as Record<Task["status"], string>,
-                    }
-                  : {}),
-              },
-            }
-          : {}),
-        ...(isRecord(linear.labelMapping) && isRecord(linear.labelMapping.labelNameToTopic)
-          ? {
-              labelMapping: {
-                labelNameToTopic: linear.labelMapping.labelNameToTopic as Record<string, string>,
-              },
-            }
-          : {}),
-      },
-    }
-  } catch (cause) {
-    if (isEnoent(cause)) {
-      return { ok: true, data: undefined }
-    }
-
-    return {
-      ok: false,
-      error: workspaceError("Failed to read Linear workspace config.", { cause: String(cause) }),
-    }
-  }
-}
-
-const isEnoent = (error: unknown): boolean => isRecord(error) && error.code === "ENOENT"
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
 
@@ -861,12 +759,6 @@ const providerError = (
     message,
     ...(details === undefined ? {} : { details }),
   } as ToolError,
-})
-
-const workspaceError = (message: string, details?: Record<string, unknown>): ToolError => ({
-  code: "workspace_error",
-  message,
-  ...(details === undefined ? {} : { details }),
 })
 
 const pushConflictFields = (task: Task, issue: LinearIssueRecord) =>

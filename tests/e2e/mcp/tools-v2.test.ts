@@ -30,7 +30,12 @@ describe("MCP v2 tools adapter", () => {
     const names = tools?.map((tool) => tool.name) ?? []
     expect(names).toContain("task.assign.phase-model")
     expect(names).toEqual(
-      expect.arrayContaining(["sync.linear.pull", "sync.linear.push", "sync.linear.status"])
+      expect.arrayContaining([
+        "sync.linear.pull",
+        "sync.linear.push",
+        "sync.linear.setup",
+        "sync.linear.status",
+      ])
     )
     expect(names).not.toContain("task.assign.phase_model")
     expect(names.some((name) => name.startsWith("sync.github."))).toBe(false)

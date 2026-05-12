@@ -427,6 +427,21 @@ export const publicToolSchemas = {
     },
     additionalProperties: false,
   }),
+  "sync.linear.setup": jsonSchema({
+    type: "object",
+    properties: {
+      teamUrl: nonEmptyStringSchema,
+      workspaceId: idSchema,
+      teamId: idSchema,
+      teamKey: nonEmptyStringSchema,
+      projectId: idSchema,
+      apiTokenEnv: nonEmptyStringSchema,
+      apiToken: nonEmptyStringSchema,
+      writeEnv: { type: "boolean" },
+      checkProvider: { type: "boolean" },
+    },
+    additionalProperties: false,
+  }),
   "sync.linear.status": jsonSchema({
     type: "object",
     properties: {
