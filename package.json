@@ -3,16 +3,24 @@
   "version": "2.0.0",
   "description": "File-system kanban board CLI and MCP server for AI agents",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
-    "logbook": "bin/logbook.cjs",
-    "logbook-mcp": "bin/logbook-mcp.cjs"
+    "logbook": "bin/logbook.cjs"
   },
   "files": [
     "bin/",
     "dist/",
-    "src/workspace/hook-templates/",
+    "CHANGELOG.md",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "quickstart.md"
   ],
   "engines": {
     "node": ">=18.0.0"
@@ -22,9 +30,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build:binaries": "sh scripts/build-binaries.sh",
-    "prepack": "sh scripts/build-binaries.sh",
-    "start": "bun src/workspace/bin-mcp.ts",
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/copy-hook-templates.mjs",
+    "prepack": "bun run build",
+    "start": "bun src/workspace/bin-cli.ts mcp",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "test:unit": "bun test tests/unit/",
@@ -35,8 +43,9 @@
     "format": "biome format --write .",
     "check": "biome check .",
     "prepare": "node -e \"process.exit(0)\"",
-    "prepublishOnly": "bun run typecheck",
-    "publish": "npm run build:binaries && bun run typecheck && npm pack --dry-run && npm publish",
+    "prepublishOnly": "bun run typecheck && bun run check && bun test && bun run build",
+    "release:dry-run": "bun run typecheck && bun run check && bun test && bun run build && node scripts/npm-pack-dry-run.mjs",
+    "release": "bun run release:dry-run && node scripts/npm-publish.mjs",
     "publish:dev": "bun link ."
   },
   "dependencies": {
@@ -49,6 +58,7 @@
     "@biomejs/biome": "latest",
     "@types/bun": "latest",
     "husky": "^9.0.0",
+    "tsc-alias": "^1.8.17",
     "typescript": "^5.7.3"
   }
 }

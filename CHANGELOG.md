@@ -13,19 +13,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Workspace layout** — canonical storage moves to `.logbook/storage/` (epics, stories, tasks, context-entries, external-links, sync-events, sync-conflicts). The old `tasks.jsonl` at the repo root is no longer written; run `workspace.init` to migrate.
 - **MCP tool IDs** — all tools now use lowercase dotted IDs. V1 snake_case names are gone: `list_tasks` → `task.list`, `create_task` → `task.create`, `update_task` → `task.update`, `edit_task` → `task.edit`, `current_task` → `task.current`.
 - **Wire format** — task fields renamed to camelCase (`definitionOfDone`, `inProgressSince`, `phaseModelOverrides`, etc.). V1 JSONL is incompatible; run `workspace.init` for automatic migration.
-- **Bins compiled from v2 entry points** — `logbook` and `logbook-mcp` now compile from `src/workspace/bin-cli.ts` and `src/workspace/bin-mcp.ts` respectively.
+- **Single v2 binary** — `logbook` now exposes both CLI commands and MCP stdio mode via `logbook mcp`.
 - **Hooks config format** — hooks require JSON `config.json` with an argv-array `command` field. YAML configs and shell-string commands are no longer valid.
 
 ### Added
 
-- **Ohtools plugin registry** — all 40+ tools registered through `@bosun-sh/ohtools` with enforced `LOWERCASE_DOTTED_ID` format, ≤ 100 tool limit, ≤ 2 KiB description bound.
+- **Ohtools plugin registry** — all 38 tools registered through `@bosun-sh/ohtools` with enforced `LOWERCASE_DOTTED_ID` format, ≤ 100 tool limit, ≤ 2 KiB description bound.
 - **Epic and Story entities** — `epic.*` and `story.*` tools with cascade delete, hierarchy, and context attachments.
 - **Context entries** — `context.*` tools for reusable information attachments with topic indexing.
 - **Linear sync** — `sync.linear.pull`, `sync.linear.push`, `sync.linear.status` as a first-class plugin.
 - **DuckDB optional index** — in-memory DuckDB over canonical `.logbook/storage/*.jsonl` via `read_json_auto` (non-canonical, never mutates storage).
 - **Hook templates** — `review-spawn` and `need-info-notify` materialized from `src/workspace/hook-templates/` on `workspace.init`.
 - **V1 migration** — `workspace.init` automatically migrates `tasks.jsonl` to v2 layout via `migrateV1Workspace`.
-- **MCP stdio wrapper** — newline-delimited JSON-RPC 2.0 loop in `src/workspace/bin-mcp.ts`.
+- **MCP stdio mode** — newline-delimited JSON-RPC 2.0 loop available through `logbook mcp`.
 
 ### Removed
 

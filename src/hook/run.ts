@@ -1,4 +1,6 @@
+import { spawn } from "node:child_process"
 import { resolve } from "node:path"
+import type { Readable } from "node:stream"
 import type { ToolResult } from "@logbook/shared/result.js"
 import {
   type HookConfig,
@@ -117,16 +119,26 @@ const executeHook = async (
 ): Promise<HookRunResult> => {
   const cwd = resolve(workspacePath, hook.cwd ?? ".")
   const timeoutMs = hook.timeoutMs ?? runtimeConfig.defaultTimeoutMs
-  const subprocess = Bun.spawn([...hook.command], {
+  const [command, ...args] = hook.command
+  const subprocess = spawn(command ?? "", args, {
     cwd,
     env: { ...process.env, ...(hook.env ?? {}) },
-    stdout: "pipe",
-    stderr: "pipe",
+    stdio: ["ignore", "pipe", "pipe"],
   })
   const stdout = captureStream(subprocess.stdout, runtimeConfig.stdoutBytes)
   const stderr = captureStream(subprocess.stderr, runtimeConfig.stderrBytes)
   let timedOut = false
   let timeout: ReturnType<typeof setTimeout> | undefined
+  let spawnFailed = false
+  const exitedPromise = new Promise<number>((resolveExit) => {
+    subprocess.once("error", () => {
+      spawnFailed = true
+      resolveExit(1)
+    })
+    subprocess.once("close", (code) => {
+      resolveExit(code ?? 0)
+    })
+  })
   const timeoutPromise = new Promise<undefined>((resolveTimeout) => {
     timeout = setTimeout(() => {
       timedOut = true
@@ -135,7 +147,7 @@ const executeHook = async (
     }, timeoutMs)
   })
 
-  const exited = await Promise.race([subprocess.exited, timeoutPromise])
+  const exited = await Promise.race([exitedPromise, timeoutPromise])
   if (timeout !== undefined) {
     clearTimeout(timeout)
   }
@@ -161,9 +173,7 @@ const executeHook = async (
     event: hook.event,
     startedAt,
     finishedAt: new Date().toISOString(),
-    ...(timedOut
-      ? {}
-      : { exitCode: typeof exited === "number" ? exited : (subprocess.exitCode ?? 0) }),
+    ...(timedOut ? {} : { exitCode: typeof exited === "number" ? exited : spawnFailed ? 1 : 0 }),
     timedOut,
     ...(capturedStdout.text.length === 0 ? {} : { stdout: capturedStdout.text }),
     ...(capturedStderr.text.length === 0 ? {} : { stderr: capturedStderr.text }),
@@ -172,22 +182,21 @@ const executeHook = async (
 }
 
 const captureStream = async (
-  stream: ReadableStream<Uint8Array> | null,
+  stream: Readable | null,
   maxBytes: number
 ): Promise<CapturedStream> => {
   if (stream === null) {
     return { text: "", truncated: false }
   }
-  const reader = stream.getReader()
   const chunks: Uint8Array[] = []
   let captured = 0
   let truncated = false
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
-    }
+  for await (const chunk of stream) {
+    const value =
+      typeof chunk === "string"
+        ? new TextEncoder().encode(chunk)
+        : new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength)
     if (captured >= maxBytes) {
       truncated = true
       continue

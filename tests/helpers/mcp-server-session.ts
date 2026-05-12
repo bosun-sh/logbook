@@ -38,10 +38,10 @@ export interface ServerSession {
 // Helper
 // ---------------------------------------------------------------------------
 
-const SERVER_ENTRY = join(import.meta.dir, "../../src/workspace/bin-mcp.ts")
+const SERVER_ENTRY = join(import.meta.dir, "../../src/workspace/bin-cli.ts")
 
 export const spawnServer = (workspaceRoot: string, _hooksDir?: string): ServerSession => {
-  const proc = Bun.spawn(["bun", "run", SERVER_ENTRY], {
+  const proc = Bun.spawn(["bun", "run", SERVER_ENTRY, "mcp"], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",

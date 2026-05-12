@@ -160,7 +160,7 @@ const initWorkspaceUnsafe = async (
 
 const HOOK_TEMPLATES_DIR = join(dirname(new URL(import.meta.url).pathname), "hook-templates")
 const HOOK_TEMPLATE_IDS = ["review-spawn", "need-info-notify"] as const
-const HOOK_TEMPLATE_FILES = ["config.json", "script.ts"] as const
+const HOOK_TEMPLATE_FILES = ["config.json", "script.mjs"] as const
 
 const materializeHookTemplates = async (
   hooksRoot: string,

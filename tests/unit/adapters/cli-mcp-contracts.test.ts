@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { publicToolSchemas } from "@logbook/plugin/public-schemas.js"
 import { runCli } from "@logbook/workspace/cli-adapter.js"
 import { cliCommands } from "@logbook/workspace/cli-commands.js"
@@ -12,6 +14,26 @@ const parseEnvelope = (stdout: string): unknown => {
 }
 
 describe("CLI and MCP adapter contracts", () => {
+  test("published package exposes one logbook binary and library exports", () => {
+    const packageJson = JSON.parse(
+      readFileSync(join(import.meta.dir, "../../..", "package.json"), "utf8")
+    ) as {
+      bin: Record<string, string>
+      main: string
+      types: string
+      exports: Record<string, unknown>
+      files: string[]
+    }
+
+    expect(packageJson.bin).toEqual({ logbook: "bin/logbook.cjs" })
+    expect(packageJson.main).toBe("./dist/index.js")
+    expect(packageJson.types).toBe("./dist/index.d.ts")
+    expect(Object.hasOwn(packageJson.exports, ".")).toBe(true)
+    expect(packageJson.files).toEqual(
+      expect.arrayContaining(["dist/", "quickstart.md", "CHANGELOG.md"])
+    )
+  })
+
   test("exposes colon-style aliases for every dotted Ohtools tool id", () => {
     expect(cliCommands.find((command) => command.toolId === "task.create")).toMatchObject({
       alias: "task:create",

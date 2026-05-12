@@ -12,6 +12,17 @@ type McpToolRegistryOptions = {
   readonly layer?: RuntimeOptions["layer"] | undefined
 }
 
+type McpRuntime = {
+  readonly run: (input: { readonly toolId: string; readonly input: unknown }) => unknown
+}
+
+type McpToolRegistry = {
+  readonly listTools: () => readonly McpToolDescriptor[]
+  readonly getTool: (name: string) => McpToolDescriptor | undefined
+  readonly hasTool: (name: string) => boolean
+  readonly runtime: (options?: McpToolRegistryOptions) => McpRuntime
+}
+
 type PublicToolId = keyof typeof publicToolSchemas
 
 const hasPublicSchema = (toolId: string): toolId is PublicToolId =>
@@ -43,7 +54,7 @@ const buildMcpToolDescriptors = (): readonly McpToolDescriptor[] => {
 const descriptors = buildMcpToolDescriptors()
 const descriptorByName = new Map(descriptors.map((descriptor) => [descriptor.name, descriptor]))
 
-export const mcpToolRegistry = {
+export const mcpToolRegistry: McpToolRegistry = {
   listTools(): readonly McpToolDescriptor[] {
     return descriptors
   },
@@ -56,10 +67,10 @@ export const mcpToolRegistry = {
     return descriptorByName.has(name)
   },
 
-  runtime(options: McpToolRegistryOptions = {}) {
+  runtime(options: McpToolRegistryOptions = {}): McpRuntime {
     const app = createLogbookApp()
     const runtimeOptions: RuntimeOptions =
       options.layer === undefined ? {} : { layer: options.layer }
-    return app.runtime(runtimeOptions)
+    return app.runtime(runtimeOptions) as McpRuntime
   },
-} as const
+}
