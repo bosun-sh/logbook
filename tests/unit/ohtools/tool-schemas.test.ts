@@ -14,6 +14,7 @@ describe("publicToolSchemas", () => {
       expect.arrayContaining([
         "sync.linear.pull",
         "sync.linear.push",
+        "sync.linear.setup",
         "sync.linear.status",
         "sync.conflicts.list",
         "sync.conflicts.resolve",

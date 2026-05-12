@@ -100,17 +100,30 @@ logbook task:update --id <uuid> --new-status done
 
 ## optional: linear sync
 
-1. export your Linear API key:
+1. add your Linear API key to `.env` or export it in your shell:
 
    ```bash
-   export LINEAR_API_KEY=lin_api_...
+   echo "LINEAR_API_KEY=lin_api_..." >> .env
    ```
 
-2. add the `linear` block to `.logbook/config.json`:
+2. configure Logbook from your Linear team URL:
+
+   ```bash
+   logbook sync:linear:setup --team-url https://linear.app/bosun/team/BOSUN
+   ```
+
+   Or use explicit ids:
+
+   ```bash
+   logbook sync:linear:setup --workspace-id <workspace-id> --team-id <team-id>
+   ```
+
+   This writes the public `linear` block to `.logbook/config.json`:
 
    ```json
    {
      "linear": {
+       "apiTokenEnv": "LINEAR_API_KEY",
        "workspaceId": "your-workspace-id",
        "defaultTeamId": "your-team-id"
      }

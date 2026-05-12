@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { ExternalLink } from "@logbook/context/schema.js"
@@ -277,6 +277,46 @@ beforeEach(() => {
 afterEach(cleanupWorkspace)
 
 describe("Linear CLI sync commands", () => {
+  test("exposes sync:linear:setup through the CLI runtime", async () => {
+    const root = await makeWorkspace()
+    let stdout = ""
+
+    const exitCode = await runCli(
+      [
+        "sync:linear:setup",
+        "--workspace-id",
+        "workspace_2",
+        "--team-id",
+        "team_2",
+        "--api-token",
+        "lin_api_test",
+        "--write-env",
+      ],
+      {
+        layer: layer() as unknown as RunCliOptions["layer"],
+        stdout: (chunk) => {
+          stdout += chunk
+        },
+      }
+    )
+
+    expect(exitCode).toBe(0)
+    expect(JSON.parse(stdout.trim())).toMatchObject({
+      ok: true,
+      data: {
+        workspaceId: "workspace_2",
+        defaultTeamId: "team_2",
+        dotenv: { created: true },
+      },
+    })
+    await expect(readFile(join(root, ".env"), "utf8")).resolves.toBe(
+      "LINEAR_API_KEY=lin_api_test\n"
+    )
+    await expect(readFile(join(root, ".logbook/config.json"), "utf8")).resolves.toContain(
+      '"defaultTeamId": "team_2"'
+    )
+  })
+
   test("exposes sync:linear:status and sync:linear:push through the CLI runtime", async () => {
     await makeWorkspace()
     let stdout = ""

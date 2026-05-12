@@ -248,6 +248,94 @@ beforeEach(() => {
 })
 
 describe("Linear pull sync", () => {
+  test("omits absent optional filters from the Linear issues query", async () => {
+    let capturedQuery = ""
+    let capturedVariables: Record<string, unknown> = {}
+    const client: ReturnType<typeof LinearTransport.fixture> = {
+      request: <TData extends Record<string, unknown>>(request: {
+        query: string
+        variables?: Record<string, unknown>
+      }) => {
+        capturedQuery = request.query
+        capturedVariables = request.variables ?? {}
+        return Effect.succeed({
+          issues: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        } as unknown as TData)
+      },
+    }
+
+    const result = await runPull(client)
+
+    expect(result).toMatchObject({ ok: true })
+    expect(capturedQuery).not.toContain("filter:")
+    expect(capturedQuery).not.toContain("updatedAt: { gte: $since }")
+    expect(capturedQuery).not.toContain("team:")
+    expect(capturedQuery).not.toContain("project:")
+    expect(capturedQuery).not.toContain("$since")
+    expect(capturedQuery).not.toContain("$teamId")
+    expect(capturedQuery).not.toContain("$projectId")
+    expect(capturedVariables).toEqual({ first: 50 })
+  })
+
+  test("includes configured optional filters in the Linear issues query", async () => {
+    let capturedQuery = ""
+    let capturedVariables: Record<string, unknown> = {}
+    const client: ReturnType<typeof LinearTransport.fixture> = {
+      request: <TData extends Record<string, unknown>>(request: {
+        query: string
+        variables?: Record<string, unknown>
+      }) => {
+        capturedQuery = request.query
+        capturedVariables = request.variables ?? {}
+        return Effect.succeed({
+          issues: {
+            nodes: [],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        } as unknown as TData)
+      },
+    }
+
+    const result = await Effect.runPromise(
+      Effect.provide(
+        Effect.withClock(fixedClock)(
+          pullLinearSync({
+            dryRun: true,
+            since: "2026-01-01T00:00:00.000Z",
+            teamId: "team_1",
+            projectId: "project_1",
+            limit: 10,
+            cursor: { providerId: "linear", cursor: "cursor_1", pageSize: 10 },
+          })
+        ),
+        Layer.mergeAll(
+          Layer.succeed(TaskRepositoryTag, taskRepo),
+          Layer.succeed(ExternalLinkRepositoryTag, linkRepo),
+          Layer.succeed(SyncEventRepositoryTag, eventRepo),
+          Layer.succeed(SyncConflictRepositoryTag, conflictRepo),
+          Layer.succeed(LinearGraphQLClientTag, client)
+        )
+      ) as Effect.Effect<unknown, never>
+    )
+
+    expect(result).toMatchObject({ ok: true })
+    expect(capturedQuery).toContain("updatedAt: { gte: $since }")
+    expect(capturedQuery).toContain("$teamId: ID")
+    expect(capturedQuery).toContain("$projectId: ID")
+    expect(capturedQuery).toContain("team: { id: { eq: $teamId } }")
+    expect(capturedQuery).toContain("project: { id: { eq: $projectId } }")
+    expect(capturedVariables).toEqual({
+      first: 10,
+      after: "cursor_1",
+      since: "2026-01-01T00:00:00.000Z",
+      teamId: "team_1",
+      projectId: "project_1",
+    })
+  })
+
   test("imports an unmapped Linear issue as a task, external link, and created event", async () => {
     const result = await runPull()
 

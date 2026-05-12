@@ -26,6 +26,7 @@ Common commands:
   logbook task:create --title "..." --description "..." --definition-of-done "..."
   logbook task:list --status "*"
   logbook task:current
+  logbook sync:linear:setup --team-url https://linear.app/<workspace>/team/<team>
   logbook sync:linear:status
 
 MCP:

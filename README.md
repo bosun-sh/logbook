@@ -123,6 +123,7 @@ connect `logbook mcp` as an MCP server and call any of the 38 tools below.
 |---------|---------|
 | `sync.linear.pull` | Pull issues from Linear into logbook (since-cursor pagination) |
 | `sync.linear.push` | Push logbook tasks to Linear |
+| `sync.linear.setup` | Configure Linear sync from a team URL or explicit ids |
 | `sync.linear.status` | Check Linear configuration and connectivity |
 | `sync.conflicts.list` | List unresolved sync conflicts |
 | `sync.conflicts.resolve` | Resolve a conflict (`use_local`, `use_remote`, or `manual`) |
@@ -173,6 +174,7 @@ logbook context:create --title "Auth spec" --body "Use JWT RS256. See docs/auth.
 logbook context:attach --context-entry-id <uuid> --task-id <uuid>
 
 # Linear sync
+logbook sync:linear:setup --team-url https://linear.app/<workspace>/team/<team>
 logbook sync:linear:pull
 logbook sync:linear:push --dry-run
 logbook sync:linear:status
@@ -194,11 +196,35 @@ all commands write a single-line JSON envelope to stdout:
 ### setup
 
 1. create a Linear API key at **Linear → Settings → API → Personal API keys**
-2. add it to your environment:
+2. add it to `.env` or export it in your shell:
    ```bash
-   export LINEAR_API_KEY=lin_api_...
+   echo "LINEAR_API_KEY=lin_api_..." >> .env
    ```
-3. declare the `linear` block in `.logbook/config.json`:
+3. configure Logbook from your Linear team URL:
+   ```bash
+   logbook sync:linear:setup --team-url https://linear.app/bosun/team/BOSUN
+   ```
+
+The setup command resolves the workspace and team ids and writes the public config to `.logbook/config.json`.
+It never writes the API key there. To let setup write `.env` for you, pass the token once:
+
+```bash
+logbook sync:linear:setup \
+  --team-url https://linear.app/bosun/team/BOSUN \
+  --api-token lin_api_... \
+  --write-env
+```
+
+Manual setup is also supported:
+
+```bash
+logbook sync:linear:setup \
+  --workspace-id <workspace-id> \
+  --team-id <team-id>
+```
+
+This produces a `linear` block like:
+
    ```json
    {
      "linear": {

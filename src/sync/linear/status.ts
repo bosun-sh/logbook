@@ -1,6 +1,5 @@
-import { readFile } from "node:fs/promises"
-import { resolve } from "node:path"
 import type { ToolResult } from "@logbook/shared/result.js"
+import { readLinearApiToken, readLinearWorkspaceConfig } from "@logbook/sync/linear/config.js"
 import type { LinearGraphQLClient } from "@logbook/sync/linear/transport.js"
 import type { SyncConflict, SyncEvent } from "@logbook/sync/schema.js"
 import { type Clock, Context, Effect } from "effect"
@@ -43,13 +42,6 @@ export type GetLinearStatusResult = {
   readonly warnings?: readonly ToolWarning[] | undefined
 }
 
-type LinearWorkspaceConfig = {
-  readonly apiTokenEnv: string
-  readonly workspaceId?: string
-  readonly defaultTeamId?: string
-  readonly defaultProjectId?: string
-}
-
 type ToolWarning = NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number]
 type ToolError = Extract<ToolResult<never>, { ok: false }>["error"]
 
@@ -75,7 +67,7 @@ export const getLinearStatus = (
     const config = configResult.data
     const warnings: ToolWarning[] = []
     const configured = config !== undefined
-    const token = resolveLinearToken(config)
+    const token = readLinearApiToken(config)
     const authenticated = token !== undefined
     const events = yield* loadEvents()
     if (!events.ok) {
@@ -196,58 +188,6 @@ const latestSuccessfulSyncAt = (events: readonly SyncEvent[]): string | undefine
   return successful[0]?.createdAt
 }
 
-const resolveLinearToken = (config: LinearWorkspaceConfig | undefined): string | undefined => {
-  const envName = config?.apiTokenEnv ?? "LINEAR_API_KEY"
-  const value = process.env[envName]
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined
-}
-
-const readLinearWorkspaceConfig = async (): Promise<
-  ToolResult<LinearWorkspaceConfig | undefined>
-> => {
-  const path = resolve(process.cwd(), ".logbook/config.json")
-  try {
-    const content = await readFile(path, "utf8")
-    const parsed = JSON.parse(content) as unknown
-    if (!isRecord(parsed) || parsed.schemaVersion !== "2" || !isRecord(parsed.linear)) {
-      return { ok: true, data: undefined }
-    }
-
-    const linear = parsed.linear
-    return {
-      ok: true,
-      data: {
-        apiTokenEnv:
-          typeof linear.apiTokenEnv === "string" && linear.apiTokenEnv.length > 0
-            ? linear.apiTokenEnv
-            : "LINEAR_API_KEY",
-        ...(typeof linear.workspaceId === "string" && linear.workspaceId.length > 0
-          ? { workspaceId: linear.workspaceId }
-          : {}),
-        ...(typeof linear.defaultTeamId === "string" && linear.defaultTeamId.length > 0
-          ? { defaultTeamId: linear.defaultTeamId }
-          : {}),
-        ...(typeof linear.defaultProjectId === "string" && linear.defaultProjectId.length > 0
-          ? { defaultProjectId: linear.defaultProjectId }
-          : {}),
-      },
-    }
-  } catch (cause) {
-    if (isEnoent(cause)) {
-      return { ok: true, data: undefined }
-    }
-
-    return {
-      ok: false,
-      error: {
-        code: "workspace_error",
-        message: "Failed to read Linear workspace config.",
-        details: { cause: String(cause) },
-      },
-    }
-  }
-}
-
 const providerWarning = (error: unknown): ToolWarning => ({
   code: "provider_warning",
   message: "Linear provider health check failed.",
@@ -277,8 +217,6 @@ const isProviderError = (
   typeof value.code === "string" &&
   typeof value.retryable === "boolean" &&
   typeof value.message === "string"
-
-const isEnoent = (error: unknown): boolean => isRecord(error) && error.code === "ENOENT"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)

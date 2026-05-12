@@ -31,6 +31,7 @@ const EXPECTED_TOOL_IDS = [
   "sync.conflicts.resolve",
   "sync.linear.pull",
   "sync.linear.push",
+  "sync.linear.setup",
   "sync.linear.status",
   "task.assign.model",
   "task.assign.phase-model",
@@ -77,7 +78,7 @@ describe("logbook ohtools registry", () => {
       "task",
       "workspace",
     ])
-    expect(toolIds).toHaveLength(38)
+    expect(toolIds).toHaveLength(39)
     expect(toolIds.every((id) => LOWERCASE_DOTTED_ID.test(id))).toBe(true)
     expect(toolIds.filter((id) => id.startsWith("workspace."))).toEqual([
       "workspace.init",
@@ -91,6 +92,7 @@ describe("logbook ohtools registry", () => {
     expect(toolIds.filter((id) => id.startsWith("sync.linear."))).toEqual([
       "sync.linear.pull",
       "sync.linear.push",
+      "sync.linear.setup",
       "sync.linear.status",
     ])
     expect(toolIds.some((id) => id.startsWith("linear."))).toBe(false)
@@ -203,6 +205,7 @@ describe("logbook ohtools registry", () => {
               "sync.conflicts.resolve",
               "sync.linear.pull",
               "sync.linear.push",
+              "sync.linear.setup",
               "sync.linear.status",
             ],
           },

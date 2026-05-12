@@ -37,6 +37,7 @@ import { updateTaskStatus } from "@logbook/task/update.js"
 import { hookListTool, hookRunTool } from "./hook-tools.js"
 import { linearPullTool } from "./linear-pull-tool.js"
 import { linearPushTool } from "./linear-push-tool.js"
+import { linearSetupTool } from "./linear-setup-tool.js"
 import { linearStatusTool } from "./linear-status-tool.js"
 import { type ListPluginsInput, listPlugins } from "./list.js"
 import { workspaceInitTool } from "./workspace-init-tool.js"
@@ -189,6 +190,7 @@ const hookTools = [
 const syncTools = [
   linearPullTool as unknown as AnyDefinedTool,
   linearPushTool as unknown as AnyDefinedTool,
+  linearSetupTool as unknown as AnyDefinedTool,
   linearStatusTool as unknown as AnyDefinedTool,
   listSyncConflictsTool as unknown as AnyDefinedTool,
   resolveSyncConflictTool as unknown as AnyDefinedTool,

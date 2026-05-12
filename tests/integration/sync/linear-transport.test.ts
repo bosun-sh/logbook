@@ -8,6 +8,27 @@ const run = <A, E>(effect: Effect.Effect<A, E>) =>
   Effect.runPromise(effect as Effect.Effect<A, never>)
 
 describe("Linear GraphQL transport", () => {
+  test("sends Linear API keys as raw Authorization header values", async () => {
+    let authorizationHeader: string | undefined
+    const client = LinearTransport.make({
+      apiToken: "lin_api_test",
+      fetch: async (_input, init) => {
+        const headers = init.headers as Record<string, string>
+        authorizationHeader = headers.authorization
+        return new Response(JSON.stringify({ data: { viewer: { id: "user_1" } } }), {
+          status: 200,
+        })
+      },
+    })
+
+    const data = await run(
+      client.request<{ viewer: { id: string } }>({ operationName: "Viewer", query })
+    )
+
+    expect(data.viewer.id).toBe("user_1")
+    expect(authorizationHeader).toBe("lin_api_test")
+  })
+
   test("matches fixtures by operation name and required variables", async () => {
     const client = LinearTransport.fixture([
       {

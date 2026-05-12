@@ -73,6 +73,7 @@ describe("listPlugins", () => {
               "sync.conflicts.resolve",
               "sync.linear.pull",
               "sync.linear.push",
+              "sync.linear.setup",
               "sync.linear.status",
             ],
           },

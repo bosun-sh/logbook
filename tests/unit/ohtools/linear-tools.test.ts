@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { parseWithSchema } from "@bosun-sh/ohtools"
 import { linearPullTool } from "@logbook/plugin/linear-pull-tool.js"
 import { linearPushTool } from "@logbook/plugin/linear-push-tool.js"
+import { linearSetupTool } from "@logbook/plugin/linear-setup-tool.js"
 import { linearStatusTool } from "@logbook/plugin/linear-status-tool.js"
 import { publicToolSchemas } from "@logbook/plugin/public-schemas.js"
 import { registerLogbookTools } from "@logbook/plugin/tool-registry.js"
@@ -12,6 +13,7 @@ describe("Linear Ohtools surface", () => {
 
     expect(linearPullTool.id).toBe("sync.linear.pull")
     expect(linearPushTool.id).toBe("sync.linear.push")
+    expect(linearSetupTool.id).toBe("sync.linear.setup")
     expect(linearStatusTool.id).toBe("sync.linear.status")
     expect(registered.metadata.find((plugin) => plugin.id === "sync")).toMatchObject({
       id: "sync",
@@ -20,17 +22,22 @@ describe("Linear Ohtools surface", () => {
         "sync.conflicts.resolve",
         "sync.linear.pull",
         "sync.linear.push",
+        "sync.linear.setup",
         "sync.linear.status",
       ],
     })
   })
 
-  test("defines object-rooted schemas for sync.linear.pull, sync.linear.push, and sync.linear.status", () => {
+  test("defines object-rooted schemas for sync.linear.pull, sync.linear.push, setup, and status", () => {
     expect(publicToolSchemas["sync.linear.pull"].jsonSchema).toMatchObject({
       type: "object",
       additionalProperties: false,
     })
     expect(publicToolSchemas["sync.linear.push"].jsonSchema).toMatchObject({
+      type: "object",
+      additionalProperties: false,
+    })
+    expect(publicToolSchemas["sync.linear.setup"].jsonSchema).toMatchObject({
       type: "object",
       additionalProperties: false,
     })
@@ -100,6 +107,22 @@ describe("Linear Ohtools surface", () => {
         ["sync.linear.push"]
       )
     ).toThrow()
+
+    expect(
+      parseWithSchema(
+        publicToolSchemas["sync.linear.setup"],
+        {
+          teamUrl: "https://linear.app/bosun/team/BOSUN",
+          apiTokenEnv: "LINEAR_API_KEY",
+          writeEnv: true,
+        },
+        ["sync.linear.setup"]
+      )
+    ).toEqual({
+      teamUrl: "https://linear.app/bosun/team/BOSUN",
+      apiTokenEnv: "LINEAR_API_KEY",
+      writeEnv: true,
+    })
 
     expect(
       parseWithSchema(

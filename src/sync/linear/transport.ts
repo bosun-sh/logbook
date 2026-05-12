@@ -148,7 +148,7 @@ const fetchWithTimeout = async (
     return await fetchImpl(options.endpoint ?? DEFAULT_ENDPOINT, {
       method: "POST",
       headers: {
-        authorization: `Bearer ${apiToken}`,
+        authorization: apiToken,
         "content-type": "application/json",
       },
       body: JSON.stringify({
