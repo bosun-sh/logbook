@@ -3,10 +3,10 @@ import type { OhtoolsError, RunResult, RuntimeOptions } from "@bosun-sh/ohtools"
 import { publicToolSchemas } from "@logbook/plugin/public-schemas.js"
 import { toToolResult } from "@logbook/plugin/results.js"
 import type { ToolResult } from "@logbook/shared/result.js"
-import { Effect } from "effect"
 import { readLinearApiToken, readLinearWorkspaceConfig } from "@logbook/sync/linear/config.js"
 import { pullLinearSync } from "@logbook/sync/linear/pull.js"
 import { pushLinearSync } from "@logbook/sync/linear/push.js"
+import { Effect } from "effect"
 import { mcpToolRegistry } from "./mcp-tools.js"
 
 const DEFAULT_MAX_MCP_INPUT_JSON_BYTES = 1_048_576
@@ -170,8 +170,9 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
       return textContent(inputValidationError)
     }
 
-    const autoWarnings: NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number][] =
-      []
+    const autoWarnings: NonNullable<
+      Extract<ToolResult<never>, { ok: true }>["warnings"]
+    >[number][] = []
     if (shouldAutoLinearPull(params.name)) {
       autoWarnings.push(...(await runAutomaticLinearSync("pull", workspaceRoot, options.layer)))
     }
@@ -188,7 +189,10 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
       return textContent(errorEnvelope("mcp_error", "MCP adapter failed to run the tool."))
     }
 
-    let envelope = toToolResult(runResult.value.output, [...runResult.value.warnings, ...autoWarnings])
+    let envelope = toToolResult(runResult.value.output, [
+      ...runResult.value.warnings,
+      ...autoWarnings,
+    ])
     if (envelope.ok && shouldAutoLinearPush(params.name)) {
       envelope = appendWarnings(
         envelope,
@@ -231,7 +235,9 @@ const runAutomaticLinearSync = async (
   operation: "pull" | "push",
   workspaceRoot: string,
   layer: RuntimeOptions["layer"] | undefined
-): Promise<readonly NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number][]> => {
+): Promise<
+  readonly NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number][]
+> => {
   if (layer === undefined) {
     return []
   }
