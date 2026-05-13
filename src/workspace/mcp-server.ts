@@ -4,10 +4,22 @@ import { publicToolSchemas } from "@logbook/plugin/public-schemas.js"
 import { toToolResult } from "@logbook/plugin/results.js"
 import type { ToolResult } from "@logbook/shared/result.js"
 import { Effect } from "effect"
+import { readLinearApiToken, readLinearWorkspaceConfig } from "@logbook/sync/linear/config.js"
+import { pullLinearSync } from "@logbook/sync/linear/pull.js"
+import { pushLinearSync } from "@logbook/sync/linear/push.js"
 import { mcpToolRegistry } from "./mcp-tools.js"
 
 const DEFAULT_MAX_MCP_INPUT_JSON_BYTES = 1_048_576
 const DEFAULT_MAX_RESULT_JSON_BYTES = 4_194_304
+const TASK_WRITE_TOOL_IDS = new Set([
+  "task.assign.model",
+  "task.assign.phase-model",
+  "task.assign.session",
+  "task.create",
+  "task.edit",
+  "task.estimate",
+  "task.update",
+])
 const textEncoder = new TextEncoder()
 
 type McpErrorCode = "mcp_error" | "schema_validation_error" | "adapter_error"
@@ -23,6 +35,7 @@ type McpTextContentResult = {
 
 export type CreateMcpServerOptions = {
   readonly layer?: RuntimeOptions["layer"] | undefined
+  readonly workspaceRoot?: string | undefined
   readonly maxMcpInputJsonBytes?: number | undefined
   readonly maxResultJsonBytes?: number | undefined
 }
@@ -58,6 +71,20 @@ const errorEnvelope = (
 const textContent = (envelope: ToolResult<unknown>): McpTextContentResult => ({
   content: [{ type: "text", text: JSON.stringify(envelope) }],
 })
+
+const appendWarnings = <T>(
+  envelope: ToolResult<T>,
+  warnings: readonly NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number][]
+): ToolResult<T> => {
+  if (!envelope.ok || warnings.length === 0) {
+    return envelope
+  }
+
+  return {
+    ...envelope,
+    warnings: [...(envelope.warnings ?? []), ...warnings],
+  }
+}
 
 const publicSchemaFor = (toolId: string) =>
   Object.hasOwn(publicToolSchemas, toolId)
@@ -120,6 +147,7 @@ const validateInput = (toolId: string, input: unknown): ToolResult<never> | null
 }
 
 export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer => {
+  const workspaceRoot = options.workspaceRoot ?? process.cwd()
   const listTools = () => ({ tools: mcpToolRegistry.listTools() })
 
   const callTool = async (params: McpToolCallParams): Promise<McpTextContentResult> => {
@@ -142,6 +170,12 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
       return textContent(inputValidationError)
     }
 
+    const autoWarnings: NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number][] =
+      []
+    if (shouldAutoLinearPull(params.name)) {
+      autoWarnings.push(...(await runAutomaticLinearSync("pull", workspaceRoot, options.layer)))
+    }
+
     const runtime = mcpToolRegistry.runtime({ layer: options.layer })
     const runResult = await Effect.runPromiseExit(
       runtime.run({
@@ -154,7 +188,14 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
       return textContent(errorEnvelope("mcp_error", "MCP adapter failed to run the tool."))
     }
 
-    const envelope = toToolResult(runResult.value.output, runResult.value.warnings)
+    let envelope = toToolResult(runResult.value.output, [...runResult.value.warnings, ...autoWarnings])
+    if (envelope.ok && shouldAutoLinearPush(params.name)) {
+      envelope = appendWarnings(
+        envelope,
+        await runAutomaticLinearSync("push", workspaceRoot, options.layer)
+      )
+    }
+
     return textContent(enforceResultBound(envelope, options))
   }
 
@@ -179,5 +220,64 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
     listTools,
     callTool,
     dispatch,
+  }
+}
+
+const shouldAutoLinearPull = (toolId: string): boolean => !toolId.startsWith("sync.")
+
+const shouldAutoLinearPush = (toolId: string): boolean => TASK_WRITE_TOOL_IDS.has(toolId)
+
+const runAutomaticLinearSync = async (
+  operation: "pull" | "push",
+  workspaceRoot: string,
+  layer: RuntimeOptions["layer"] | undefined
+): Promise<readonly NonNullable<Extract<ToolResult<never>, { ok: true }>["warnings"]>[number][]> => {
+  if (layer === undefined) {
+    return []
+  }
+
+  const configResult = await readLinearWorkspaceConfig(workspaceRoot)
+  if (!configResult.ok || configResult.data === undefined) {
+    return []
+  }
+
+  if (readLinearApiToken(configResult.data, workspaceRoot) === undefined) {
+    return []
+  }
+
+  const effect =
+    operation === "pull" ? pullLinearSync({ dryRun: false }) : pushLinearSync({ dryRun: false })
+  const provided = Effect.provide(
+    effect as unknown as Effect.Effect<ToolResult<unknown>, never, never>,
+    layer as never
+  ) as Effect.Effect<ToolResult<unknown>, never, never>
+
+  try {
+    const result = await Effect.runPromise(provided)
+    if (result.ok) {
+      return result.warnings ?? []
+    }
+
+    return [
+      {
+        code: "auto_sync_failed",
+        message: `Automatic Linear ${operation} failed.`,
+        details: {
+          operation,
+          error: result.error,
+        },
+      },
+    ]
+  } catch (cause) {
+    return [
+      {
+        code: "auto_sync_failed",
+        message: `Automatic Linear ${operation} failed.`,
+        details: {
+          operation,
+          cause: String(cause),
+        },
+      },
+    ]
   }
 }

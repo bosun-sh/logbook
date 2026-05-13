@@ -19,7 +19,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 export const runMcpStdio = (): void => {
   const workspaceRoot = process.env.LOGBOOK_WORKSPACE_ROOT ?? process.cwd()
   const layer = makeLogbookLayer(workspaceRoot) as unknown as CreateMcpServerOptions["layer"]
-  const server = createMcpServer({ layer })
+  const server = createMcpServer({ layer, workspaceRoot })
 
   const handleLine = async (line: string): Promise<void> => {
     if (textEncoder.encode(line).length > MAX_LINE_BYTES) {
