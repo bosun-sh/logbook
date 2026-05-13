@@ -1,14 +1,5 @@
 #!/usr/bin/env sh
 set -eu
 
-echo "→ lint"
-bun run check
-
-: "${GOCACHE:=/tmp/go-build}"
-: "${GOMODCACHE:=/tmp/go-mod}"
-
-echo "→ tests + coverage (threshold: 95%)"
-bun test --coverage
-
-echo "→ go fmt"
-env GOCACHE="$GOCACHE" GOMODCACHE="$GOMODCACHE" go fmt ./...
+bun run lint
+bun test

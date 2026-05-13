@@ -1,0 +1,10 @@
+{
+  "id": "need-info-notify",
+  "enabled": true,
+  "event": "task.status_changed",
+  "condition": {
+    "status": "need_info"
+  },
+  "timeoutMs": 5000,
+  "command": ["node", ".logbook/hooks/need-info-notify/script.mjs"]
+}
