@@ -13,10 +13,10 @@ the published CLI runs on Node.js; no Bun install is required for runtime.
 ## 2. initialize the workspace
 
 ```bash
-logbook workspace:init
+logbook init
 ```
 
-this creates `.logbook/` in the current directory with `config.json`, `workspace.json`, a `storage/` directory, and the `review-spawn` and `need-info-notify` hook templates.
+this creates `.logbook/` in the current directory with `config.json`, `workspace.json`, a `storage/` directory, and the `review-spawn` and `need-info-notify` hook templates. it also offers to configure your detected MCP client and optionally set up Linear sync.
 
 add `.logbook/storage/` to `.gitignore`:
 
@@ -25,6 +25,8 @@ add `.logbook/storage/` to `.gitignore`:
 ```
 
 ## 3. connect to your ai client
+
+`logbook init` can write the MCP config for detected clients. if you skipped that step, add one of these manually:
 
 **Claude Code** — add to `.claude/settings.json`:
 
@@ -100,6 +102,8 @@ logbook task:update --id <uuid> --new-status done
 
 ## optional: linear sync
 
+`logbook init` can run this setup interactively. if you skipped it, configure Linear separately:
+
 1. add your Linear API key to `.env` or export it in your shell:
 
    ```bash
@@ -149,6 +153,8 @@ logbook task:update --id <uuid> --new-status done
    ```bash
    logbook sync:linear:status --check-provider
    ```
+
+When you use Logbook through MCP, agent tool calls automatically pull fresh Linear changes before task-facing work and push successful task updates back to Linear.
 
 ---
 

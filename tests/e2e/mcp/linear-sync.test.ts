@@ -180,6 +180,22 @@ const makeLink = (): ExternalLink => ({
   lastPushedLocalVersion: "local-v1",
 })
 
+const makeLinearIssue = (overrides: Partial<Record<string, unknown>> = {}) => ({
+  id: "issue_1",
+  identifier: "LOG-1",
+  url: "https://linear.app/acme/issue/LOG-1/test",
+  title: "Remote title",
+  description: "Remote description",
+  priority: 2,
+  updatedAt: "remote-v2",
+  archivedAt: null,
+  team: { id: "team_1", key: "LOG", name: "Logbook" },
+  project: { id: "project_1", name: "Migration" },
+  state: { id: "state_started", name: "Started", type: "started" },
+  labels: { nodes: [] },
+  ...overrides,
+})
+
 const parseEnvelope = (result: unknown): any => {
   const content = (result as { content?: Array<{ type?: unknown; text?: unknown }> }).content
   expect(Array.isArray(content)).toBe(true)
@@ -240,6 +256,12 @@ const layer = () =>
     Layer.succeed(LinearGraphQLClientTag, linearClient)
   )
 
+const makeServer = () =>
+  createMcpServer({
+    layer: layer() as unknown as CreateMcpServerOptions["layer"],
+    workspaceRoot: workspaceRoot ?? process.cwd(),
+  })
+
 beforeEach(() => {
   taskRepo = new InMemoryTaskRepository([makeTask()])
   linkRepo = new InMemoryExternalLinkRepository([makeLink()])
@@ -287,7 +309,7 @@ afterEach(cleanupWorkspace)
 describe("Linear MCP sync tools", () => {
   test("lists sync.linear.push and sync.linear.status and calls them through the shared runtime", async () => {
     await makeWorkspace()
-    const server = createMcpServer({ layer: layer() as unknown as CreateMcpServerOptions["layer"] })
+    const server = makeServer()
     const listed = await server.dispatch("tools/list", {})
     const tools = (
       listed as { tools?: Array<{ name: string; inputSchema: Record<string, unknown> }> }
@@ -335,6 +357,131 @@ describe("Linear MCP sync tools", () => {
         updated: 0,
         conflicts: 0,
       },
+    })
+  })
+
+  test("automatically pulls Linear before a task read", async () => {
+    await makeWorkspace()
+    linearClient = LinearTransport.fixture([
+      {
+        name: "pull",
+        request: { operationName: "LinearPullIssues" },
+        response: {
+          status: 200,
+          body: {
+            data: {
+              issues: {
+                nodes: [
+                  makeLinearIssue({
+                    title: "Remote title after pull",
+                    description: "Remote description after pull",
+                    updatedAt: "remote-v3",
+                  }),
+                ],
+                pageInfo: {
+                  hasNextPage: false,
+                  endCursor: null,
+                },
+              },
+            },
+          },
+        },
+      },
+    ])
+
+    const server = makeServer()
+    const result = await server.dispatch("tools/call", {
+      name: "task.get",
+      arguments: { id: "task_1" },
+    })
+
+    expect(parseEnvelope(result)).toMatchObject({
+      ok: true,
+      data: {
+        task: expect.objectContaining({
+          id: "task_1",
+          title: "Remote title after pull",
+          description: "Remote description after pull",
+        }),
+      },
+    })
+  })
+
+  test("automatically pushes Linear after a task write", async () => {
+    await makeWorkspace()
+    linearClient = LinearTransport.fixture([
+      {
+        name: "pull",
+        request: { operationName: "LinearPullIssues" },
+        response: {
+          status: 200,
+          body: {
+            data: {
+              issues: {
+                nodes: [makeLinearIssue({ updatedAt: "remote-v1" })],
+                pageInfo: {
+                  hasNextPage: false,
+                  endCursor: null,
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        name: "get-issue",
+        request: { operationName: "LinearGetIssue", variables: { id: "issue_1" } },
+        response: {
+          status: 200,
+          body: {
+            data: {
+              issue: makeLinearIssue({ updatedAt: "remote-v1" }),
+            },
+          },
+        },
+      },
+      {
+        name: "update-issue",
+        request: { operationName: "LinearUpdateIssue" },
+        response: {
+          status: 200,
+          body: {
+            data: {
+              issueUpdate: {
+                issue: makeLinearIssue({
+                  title: "Local title",
+                  description: "Local description",
+                  priority: 1,
+                  updatedAt: "remote-v5",
+                }),
+              },
+            },
+          },
+        },
+      },
+    ])
+
+    const server = makeServer()
+    const result = await server.dispatch("tools/call", {
+      name: "task.update",
+      arguments: {
+        id: "task_1",
+        newStatus: "in_progress",
+      },
+    })
+
+    expect(parseEnvelope(result)).toMatchObject({
+      ok: true,
+      data: {
+        task: expect.objectContaining({
+          id: "task_1",
+          status: "in_progress",
+        }),
+      },
+    })
+    expect(linkRepo.records.get("external_link_1")).toMatchObject({
+      lastSeenRemoteVersion: "remote-v5",
+      lastPushedLocalVersion: expect.any(String),
     })
   })
 })

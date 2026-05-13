@@ -18,7 +18,7 @@ v2 adds: *epics → stories → tasks* hierarchy, reusable *context entries* (kn
 
 ```bash
 npm install -g @bosun-sh/logbook     # install the CLI
-logbook workspace:init               # scaffold .logbook/ in the current directory
+logbook init                         # scaffold .logbook/, configure MCP, optionally set up Linear
 logbook task:create \
   --title "Implement login endpoint" \
   --description "JWT auth, see docs/auth.md" \
@@ -34,7 +34,7 @@ for one-off local use, run commands through your package manager, for example
 
 ## workspace layout
 
-`workspace.init` creates the following structure:
+`logbook init` creates the following structure through `workspace.init`:
 
 ```
 .logbook/
@@ -153,6 +153,10 @@ connect `logbook mcp` as an MCP server and call any of the 38 tools below.
 every tool is available as `logbook <tool-id-with-colons>`:
 
 ```bash
+# preferred onboarding
+logbook init
+logbook init --mcp-client claude --no-linear
+
 # workspace
 logbook workspace:init
 logbook workspace:status
@@ -195,6 +199,9 @@ all commands write a single-line JSON envelope to stdout:
 
 ### setup
 
+The preferred setup path is `logbook init`, which prompts for Linear sync setup.
+To configure Linear separately:
+
 1. create a Linear API key at **Linear → Settings → API → Personal API keys**
 2. add it to `.env` or export it in your shell:
    ```bash
@@ -236,6 +243,8 @@ This produces a `linear` block like:
    ```
 
 ### pull / push
+
+when Logbook runs through MCP, task-facing tools automatically pull before the call and push successful task writes back to Linear. the explicit commands below are still available for manual refreshes, dry runs, and targeted syncs.
 
 ```bash
 # pull issues from Linear since the last cursor

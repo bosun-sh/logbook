@@ -1,5 +1,6 @@
 import type { RunCliOptions } from "./cli-adapter.js"
 import { LOGBOOK_CLI_HELP, LOGBOOK_VERSION, runCli } from "./cli-adapter.js"
+import { runInitOnboarding } from "./init-onboarding.js"
 import { makeLogbookLayer } from "./layers.js"
 import { runMcpStdio } from "./mcp-stdio.js"
 
@@ -9,6 +10,9 @@ const argv = process.argv.slice(2)
 
 if (argv[0] === "mcp") {
   runMcpStdio()
+} else if (argv[0] === "init") {
+  const exitCode = await runInitOnboarding(argv.slice(1))
+  process.exit(exitCode)
 } else if (argv[0] === "--help" || argv[0] === "-h" || argv[0] === "help") {
   process.stdout.write(LOGBOOK_CLI_HELP)
   process.exit(0)

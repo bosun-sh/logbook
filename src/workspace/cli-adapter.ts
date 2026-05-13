@@ -15,12 +15,14 @@ export const LOGBOOK_VERSION = "2.0.0"
 export const LOGBOOK_CLI_HELP = `logbook ${LOGBOOK_VERSION}
 
 Usage:
+  logbook init
   logbook <command> [--flag value]
   logbook mcp
   logbook --help
   logbook --version
 
 Common commands:
+  logbook init
   logbook workspace:init
   logbook workspace:status
   logbook task:create --title "..." --description "..." --definition-of-done "..."

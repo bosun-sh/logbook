@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdir, mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -49,6 +49,76 @@ describe("bin-cli smoke tests", () => {
     expect(result.ok).toBe(true)
     const data = result.data as Record<string, unknown>
     expect((data.workspace as Record<string, unknown>).schemaVersion).toBe(2)
+  })
+
+  test("init runs one-command onboarding without Linear or MCP setup", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-init-"))
+
+    const { exitCode, stdout } = await runCli([
+      "init",
+      `--path=${workspaceRoot}`,
+      "--mcp-client=none",
+      "--no-linear",
+    ])
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain("Workspace ready")
+    expect(stdout).toContain("MCP setup skipped")
+    expect(stdout).toContain("Linear setup skipped")
+    await expect(readFile(join(workspaceRoot, ".logbook/config.json"), "utf8")).resolves.toContain(
+      '"schemaVersion": "2"'
+    )
+  })
+
+  test("init writes Claude Code MCP config", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-claude-"))
+    await mkdir(join(workspaceRoot, ".claude"), { recursive: true })
+    await writeFile(
+      join(workspaceRoot, ".claude/settings.json"),
+      JSON.stringify({ permissions: { allow: ["Bash(git status)"] } }, null, 2),
+      "utf8"
+    )
+
+    const { exitCode } = await runCli([
+      "init",
+      `--path=${workspaceRoot}`,
+      "--mcp-client=claude",
+      "--no-linear",
+    ])
+
+    expect(exitCode).toBe(0)
+    const settings = JSON.parse(
+      await readFile(join(workspaceRoot, ".claude/settings.json"), "utf8")
+    ) as Record<string, any>
+    expect(settings.permissions).toEqual({ allow: ["Bash(git status)"] })
+    expect(settings.mcpServers.logbook).toEqual({ command: "logbook", args: ["mcp"] })
+  })
+
+  test("init writes OpenCode MCP config", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-opencode-"))
+    await writeFile(
+      join(workspaceRoot, "opencode.json"),
+      JSON.stringify({ theme: "system" }, null, 2),
+      "utf8"
+    )
+
+    const { exitCode } = await runCli([
+      "init",
+      `--path=${workspaceRoot}`,
+      "--mcp-client=opencode",
+      "--no-linear",
+    ])
+
+    expect(exitCode).toBe(0)
+    const config = JSON.parse(
+      await readFile(join(workspaceRoot, "opencode.json"), "utf8")
+    ) as Record<string, any>
+    expect(config.theme).toBe("system")
+    expect(config.mcp.logbook).toEqual({
+      type: "local",
+      command: ["logbook", "mcp"],
+      enabled: true,
+    })
   })
 
   test("task.create returns task with backlog status", async () => {
