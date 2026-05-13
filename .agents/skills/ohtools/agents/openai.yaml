@@ -1,0 +1,12 @@
+interface:
+  display_name: "Ohtools"
+  short_description: "Build agent-callable Ohtools tools"
+  default_prompt: "Use $ohtools to build, expose, or validate an agent-callable CLI or MCP tool."
+entry: "SKILL.md"
+references:
+  - "references/project-orientation.md"
+  - "references/app-creation.md"
+  - "references/tool-plugin-authoring.md"
+  - "references/runtime-schemas-errors.md"
+  - "references/cli-mcp-docs-release.md"
+  - "references/quality-checklist.md"

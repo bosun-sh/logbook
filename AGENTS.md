@@ -1,61 +1,51 @@
-# Logbook CLI
+# Logbook V2 — Ship State
 
-File-system kanban board for AI agents.
+`@bosun-sh/logbook` v2.0.0 is complete and shipped. See `CHANGELOG.md` for breaking changes
+and `README.md` for the full v2 surface. The v2 Ohtools-based surface is the single source of truth.
 
-## Commands
+## Architecture Contract
 
-| Command | Description |
-|---------|-------------|
-| `logbook create-task` | Create a new task in backlog |
-| `logbook list-tasks` | List tasks, optionally filtered by status |
-| `logbook current-task` | Get current in-progress task for this session |
-| `logbook update-task` | Transition task status |
-| `logbook edit-task` | Edit task fields without changing status |
-| `logbook init` | Initialize project |
+Production TypeScript code must use the v2 screaming architecture roots:
 
-## Task Lifecycle
-
-`backlog → todo → in_progress → pending_review → done`
-
-Side-exits: `in_progress → need_info`, `blocked` (return to `in_progress`)
-
-## Usage Examples
-
-### Create a task
-```bash
-logbook create-task --project myproject --milestone v1 --title "Fix bug" \
-  --definition-of-done "Bug fixed and tested" --description "Details..." \
-  --predicted-k-tokens 3
+```text
+src/epic/*
+src/story/*
+src/task/*
+src/context/*
+src/sync/*
+src/plugin/*
+src/hook/*
+src/workspace/*
+src/shared/*
+src/index.ts
 ```
 
-### List tasks
+Entity behavior belongs under its entity directory. Use `src/shared/*` only for
+true cross-entity primitives, repository mechanics, schema helpers, runtime
+tags, result envelopes, IDs, time, pagination, and error contracts.
+
+The implementation must preserve these principles from the spec:
+
+- Functional core, imperative shell.
+- File-native canonical storage; DuckDB is optional and non-canonical.
+- Static Ohtools registry with thin CLI and MCP adapters.
+- Public schemas are object-rooted, machine-readable, and reject unknown fields
+  unless the compatibility spec explicitly says otherwise.
+- V1 compatibility exists only where the v2 spec explicitly retains it.
+- Every unbounded operation must have an explicit bound, default, and failure or
+  continuation behavior.
+- Linear is the required real sync provider for v2.
+- GitHub sync is deferred and must not be implemented for v2.
+
+## Local Commands
+
+Use the smallest relevant check first, then broader checks as needed:
+
 ```bash
-logbook list-tasks --status in_progress
-logbook list-tasks --status "*"
-logbook list-tasks --status todo --project myproject
+bun test
+bun test tests/unit/
+bun test tests/e2e/
+bun run typecheck
+bun run check
+bun run build:binaries
 ```
-
-### Get current task
-```bash
-logbook current-task
-```
-
-### Update task status
-```bash
-logbook update-task --id <uuid> --new-status in_progress
-logbook update-task --id <uuid> --new-status need_info \
-  --comment-title "Need info" --comment-content "What does X mean?"
-```
-
-### Edit task
-```bash
-logbook edit-task --id <uuid> --title "New title"
-```
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LOGBOOK_TASKS_FILE` | `./tasks.jsonl` | Path to JSONL task store |
-| `LOGBOOK_HOOKS_DIR` | `./hooks` | Directory for hook definitions |
-| `LOGBOOK_SESSION_ID` | auto-generated | Session ID to use |

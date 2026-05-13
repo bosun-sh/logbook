@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "2",
+  "storage": {
+    "root": ".logbook/storage"
+  },
+  "hooks": {
+    "enabled": true,
+    "directory": ".logbook/hooks",
+    "defaultTimeoutMs": 5000,
+    "stdoutBytes": 1048576,
+    "stderrBytes": 1048576
+  }
+}
