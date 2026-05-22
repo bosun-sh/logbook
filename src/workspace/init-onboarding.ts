@@ -1,6 +1,8 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
+import { homedir } from "node:os"
 import { resolve } from "node:path"
 import { createInterface } from "node:readline/promises"
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml"
 import type { ToolResult } from "@logbook/shared/result.js"
 import { type SetupLinearSyncInput, setupLinearSync } from "@logbook/sync/linear/setup.js"
 import { type LinearGraphQLClient, LinearTransport } from "@logbook/sync/linear/transport.js"
@@ -32,9 +34,10 @@ type ParsedInitArgs = {
   readonly linearTeamUrl?: string | undefined
   readonly linearApiToken?: string | undefined
   readonly writeEnv: boolean
+  readonly noSkill: boolean
 }
 
-type McpClient = "claude" | "opencode" | "none"
+type McpClient = "claude" | "opencode" | "codex" | "none"
 
 type McpWriteResult = {
   readonly client: Exclude<McpClient, "none">
@@ -86,6 +89,16 @@ export const runInitOnboarding = async (
     } else {
       const mcp = await writeMcpConfig(workspaceRoot, mcpClient)
       stdout(`MCP configured for ${formatMcpClient(mcp.client)} at ${mcp.path}.\n`)
+      if (mcpClient === "claude" && !parsed.value.noSkill) {
+        const installed = await tryInstallLogbookSkill(workspaceRoot)
+        if (installed) {
+          stdout("Installed logbook skill via skills CLI.\n")
+        } else {
+          stderr(
+            "Skill install skipped (run `npx skills add https://github.com/bosun-sh/skills --skill logbook` to retry).\n"
+          )
+        }
+      }
     }
 
     const linearInput = await chooseLinearInput(parsed.value, readline)
@@ -172,6 +185,7 @@ const parseInitArgs = (
       ...(typeof flags.linearTeamUrl === "string" ? { linearTeamUrl: flags.linearTeamUrl } : {}),
       ...(typeof flags.linearApiToken === "string" ? { linearApiToken: flags.linearApiToken } : {}),
       writeEnv: flags.writeEnv === true,
+      noSkill: flags.noSkill === true,
     },
   }
 }
@@ -194,10 +208,10 @@ const parseMcpClient = (
   if (value === undefined) {
     return { ok: true }
   }
-  if (value === "claude" || value === "opencode" || value === "none") {
+  if (value === "claude" || value === "opencode" || value === "codex" || value === "none") {
     return { ok: true, value }
   }
-  return { ok: false, error: "--mcp-client must be claude, opencode, or none" }
+  return { ok: false, error: "--mcp-client must be claude, opencode, codex, or none" }
 }
 
 const chooseMcpClient = async (
@@ -218,12 +232,13 @@ const chooseMcpClient = async (
 
   const defaultClient = detected[0] ?? "claude"
   const answer = (
-    await readline.question(`Configure MCP client? [${defaultClient}/opencode/none] `)
+    await readline.question(`Configure MCP client? [${defaultClient}/opencode/codex/none] `)
   )
     .trim()
     .toLowerCase()
   if (answer.length === 0) return defaultClient
-  if (answer === "claude" || answer === "opencode" || answer === "none") return answer
+  if (answer === "claude" || answer === "opencode" || answer === "codex" || answer === "none")
+    return answer
   return "none"
 }
 
@@ -254,16 +269,31 @@ const writeMcpConfig = async (
     return { client, path, created: !existing.exists }
   }
 
-  const path = resolve(workspaceRoot, "opencode.json")
-  const existing = await readJsonObject(path)
+  if (client === "opencode") {
+    const path = resolve(workspaceRoot, "opencode.json")
+    const existing = await readJsonObject(path)
+    const next = {
+      ...existing.value,
+      mcp: {
+        ...(isRecord(existing.value.mcp) ? existing.value.mcp : {}),
+        logbook: { type: "local", command: ["logbook", "mcp"], enabled: true },
+      },
+    }
+    await writeJsonObject(path, next)
+    return { client, path, created: !existing.exists }
+  }
+
+  const path = resolve(homedir(), ".codex/config.toml")
+  const existing = await readTomlObject(path)
+  const mcpServers = isRecord(existing.value.mcp_servers) ? existing.value.mcp_servers : {}
   const next = {
     ...existing.value,
-    mcp: {
-      ...(isRecord(existing.value.mcp) ? existing.value.mcp : {}),
-      logbook: { type: "local", command: ["logbook", "mcp"], enabled: true },
+    mcp_servers: {
+      ...mcpServers,
+      logbook: { command: "logbook", args: ["mcp"], env: { LOGBOOK_WORKSPACE_ROOT: workspaceRoot } },
     },
   }
-  await writeJsonObject(path, next)
+  await writeTomlObject(path, next)
   return { client, path, created: !existing.exists }
 }
 
@@ -333,6 +363,23 @@ const writeJsonObject = async (path: string, value: Record<string, unknown>): Pr
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8")
 }
 
+const readTomlObject = async (
+  path: string
+): Promise<{ readonly exists: boolean; readonly value: Record<string, unknown> }> => {
+  const content = await readFile(path, "utf8").catch((cause: unknown) => {
+    if (isEnoent(cause)) return undefined
+    throw cause
+  })
+  if (content === undefined) return { exists: false, value: {} }
+  const parsed = parseToml(content) as unknown
+  return { exists: true, value: isRecord(parsed) ? parsed : {} }
+}
+
+const writeTomlObject = async (path: string, value: Record<string, unknown>): Promise<void> => {
+  await mkdir(resolve(path, ".."), { recursive: true })
+  await writeFile(path, stringifyToml(value), "utf8")
+}
+
 const exists = async (path: string): Promise<boolean> =>
   (await stat(path).catch((cause: unknown) => {
     if (isEnoent(cause)) return null
@@ -345,14 +392,44 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isEnoent = (cause: unknown): boolean =>
   cause instanceof Error && "code" in cause && cause.code === "ENOENT"
 
-const formatMcpClient = (client: Exclude<McpClient, "none">): string =>
-  client === "claude" ? "Claude Code" : "OpenCode"
+const formatMcpClient = (client: Exclude<McpClient, "none">): string => {
+  const labels: Record<Exclude<McpClient, "none">, string> = {
+    claude: "Claude Code",
+    opencode: "OpenCode",
+    codex: "Codex",
+  }
+  return labels[client]
+}
 
 const writeToolFailure = (
   stderr: Write,
   result: Extract<ToolResult<never>, { ok: false }>
 ): void => {
   stderr(`error: ${result.error.message}\n`)
+}
+
+const SKILL_INSTALL_ARGS = [
+  "npx",
+  "--yes",
+  "skills",
+  "add",
+  "https://github.com/bosun-sh/skills",
+  "--skill",
+  "logbook",
+] as const
+
+const tryInstallLogbookSkill = async (workspaceRoot: string): Promise<boolean> => {
+  try {
+    const proc = Bun.spawn([...SKILL_INSTALL_ARGS], {
+      cwd: workspaceRoot,
+      stdout: "ignore",
+      stderr: "ignore",
+    })
+    return (await proc.exited) === 0
+  } catch {
+    // best-effort: network or missing runtime must not block init
+    return false
+  }
 }
 
 const runInWorkspace = async <T>(workspaceRoot: string, run: () => Promise<T>): Promise<T> => {

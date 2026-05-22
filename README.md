@@ -156,6 +156,7 @@ every tool is available as `logbook <tool-id-with-colons>`:
 # preferred onboarding
 logbook init
 logbook init --mcp-client claude --no-linear
+logbook init --mcp-client codex --no-linear
 
 # workspace
 logbook workspace:init
