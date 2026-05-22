@@ -1,19 +1,23 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { parse as parseToml } from "smol-toml"
 
 const BIN_CLI_ENTRY = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
 
 const runCli = async (
   args: string[],
-  options: { workspaceRoot?: string; stdin?: string } = {}
+  options: { workspaceRoot?: string; stdin?: string; home?: string } = {}
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> => {
   const env: Record<string, string> = Object.fromEntries(
     Object.entries(process.env).filter(([, v]) => v !== undefined) as [string, string][]
   )
   if (options.workspaceRoot) {
     env.LOGBOOK_WORKSPACE_ROOT = options.workspaceRoot
+  }
+  if (options.home) {
+    env.HOME = options.home
   }
 
   const proc = Bun.spawn(["bun", "run", BIN_CLI_ENTRY, ...args], {
@@ -121,6 +125,62 @@ describe("bin-cli smoke tests", () => {
     })
   })
 
+  test("init writes Codex MCP config", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-codex-"))
+    const fakeHome = await mkdtemp(join(tmpdir(), "logbook-fake-home-"))
+
+    try {
+      const { exitCode } = await runCli(
+        ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
+        { home: fakeHome }
+      )
+
+      expect(exitCode).toBe(0)
+      const raw = await readFile(join(fakeHome, ".codex/config.toml"), "utf8")
+      const config = parseToml(raw) as Record<string, unknown>
+      const mcpServers = config.mcp_servers as Record<string, unknown>
+      const logbook = mcpServers.logbook as Record<string, unknown>
+      expect(logbook.command).toBe("logbook")
+      expect(logbook.args).toEqual(["mcp"])
+      const env = logbook.env as Record<string, string>
+      expect(env.LOGBOOK_WORKSPACE_ROOT).toBe(workspaceRoot)
+    } finally {
+      await rm(fakeHome, { recursive: true, force: true })
+    }
+  })
+
+  test("init Codex preserves existing TOML sections", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-codex-merge-"))
+    const fakeHome = await mkdtemp(join(tmpdir(), "logbook-fake-home-merge-"))
+
+    try {
+      await mkdir(join(fakeHome, ".codex"), { recursive: true })
+      await writeFile(
+        join(fakeHome, ".codex/config.toml"),
+        `[some_other_section]\nkey = "value"\n\n[mcp_servers.other]\ncommand = "other"\n`,
+        "utf8"
+      )
+
+      const { exitCode } = await runCli(
+        ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
+        { home: fakeHome }
+      )
+
+      expect(exitCode).toBe(0)
+      const raw = await readFile(join(fakeHome, ".codex/config.toml"), "utf8")
+      const config = parseToml(raw) as Record<string, unknown>
+      const otherSection = config.some_other_section as Record<string, unknown>
+      expect(otherSection.key).toBe("value")
+      const mcpServers = config.mcp_servers as Record<string, unknown>
+      const other = mcpServers.other as Record<string, unknown>
+      expect(other.command).toBe("other")
+      const logbook = mcpServers.logbook as Record<string, unknown>
+      expect(logbook.command).toBe("logbook")
+    } finally {
+      await rm(fakeHome, { recursive: true, force: true })
+    }
+  })
+
   test("task.create returns task with backlog status", async () => {
     workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-create-"))
     await mkdir(join(workspaceRoot, ".logbook/storage"), { recursive: true })
@@ -146,6 +206,33 @@ describe("bin-cli smoke tests", () => {
     expect(task.kind).toBe("task")
     expect(task.status).toBe("backlog")
     expect(task.title).toBe("Smoke test task")
+  })
+
+  test("init --no-skill skips skill installation for Claude", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-noskill-"))
+    await mkdir(join(workspaceRoot, ".claude"), { recursive: true })
+
+    const { exitCode, stdout, stderr } = await runCli([
+      "init",
+      `--path=${workspaceRoot}`,
+      "--mcp-client=claude",
+      "--no-linear",
+      "--no-skill",
+    ])
+
+    expect(exitCode).toBe(0)
+    expect(stdout).not.toContain("Installed logbook skill")
+    expect(stdout).not.toContain("Skill install skipped")
+    expect(stderr).not.toContain("Skill install skipped")
+    const lockExists = await stat(join(workspaceRoot, "skills-lock.json"))
+      .then(() => true)
+      .catch(() => false)
+    expect(lockExists).toBe(false)
+    const settings = JSON.parse(
+      await readFile(join(workspaceRoot, ".claude/settings.json"), "utf8")
+    ) as Record<string, unknown>
+    const mcpServers = settings.mcpServers as Record<string, unknown>
+    expect(mcpServers.logbook).toBeDefined()
   })
 
   test("unknown command returns error with exit code 1", async () => {
