@@ -1,5 +1,4 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
-import { homedir } from "node:os"
 import { resolve } from "node:path"
 import { createInterface } from "node:readline/promises"
 import type { ToolResult } from "@logbook/shared/result.js"
@@ -283,7 +282,7 @@ const writeMcpConfig = async (
     return { client, path, created: !existing.exists }
   }
 
-  const path = resolve(homedir(), ".codex/config.toml")
+  const path = resolve(workspaceRoot, ".codex/config.toml")
   const existing = await readTomlObject(path)
   const mcpServers = isRecord(existing.value.mcp_servers) ? existing.value.mcp_servers : {}
   const next = {
@@ -293,6 +292,7 @@ const writeMcpConfig = async (
       logbook: {
         command: "logbook",
         args: ["mcp"],
+        cwd: ".",
         env: { LOGBOOK_WORKSPACE_ROOT: workspaceRoot },
       },
     },

@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
 set -eu
 
-bun run lint
-bun test
+bun run ci:precommit
