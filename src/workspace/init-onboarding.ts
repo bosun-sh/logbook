@@ -2,7 +2,6 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { homedir } from "node:os"
 import { resolve } from "node:path"
 import { createInterface } from "node:readline/promises"
-import { parse as parseToml, stringify as stringifyToml } from "smol-toml"
 import type { ToolResult } from "@logbook/shared/result.js"
 import { type SetupLinearSyncInput, setupLinearSync } from "@logbook/sync/linear/setup.js"
 import { type LinearGraphQLClient, LinearTransport } from "@logbook/sync/linear/transport.js"
@@ -12,6 +11,7 @@ import {
   type WorkspaceInitResult,
 } from "@logbook/workspace/init.js"
 import { Context, Effect, Layer } from "effect"
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml"
 
 type Write = (chunk: string) => void
 type ReadLine = {
@@ -89,7 +89,7 @@ export const runInitOnboarding = async (
     } else {
       const mcp = await writeMcpConfig(workspaceRoot, mcpClient)
       stdout(`MCP configured for ${formatMcpClient(mcp.client)} at ${mcp.path}.\n`)
-      if (mcpClient === "claude" && !parsed.value.noSkill) {
+      if (mcpClient === "claude" && !parsed.value.noSkill && canInstallLogbookSkill()) {
         const installed = await tryInstallLogbookSkill(workspaceRoot)
         if (installed) {
           stdout("Installed logbook skill via skills CLI.\n")
@@ -290,7 +290,11 @@ const writeMcpConfig = async (
     ...existing.value,
     mcp_servers: {
       ...mcpServers,
-      logbook: { command: "logbook", args: ["mcp"], env: { LOGBOOK_WORKSPACE_ROOT: workspaceRoot } },
+      logbook: {
+        command: "logbook",
+        args: ["mcp"],
+        env: { LOGBOOK_WORKSPACE_ROOT: workspaceRoot },
+      },
     },
   }
   await writeTomlObject(path, next)
@@ -431,6 +435,9 @@ const tryInstallLogbookSkill = async (workspaceRoot: string): Promise<boolean> =
     return false
   }
 }
+
+const canInstallLogbookSkill = (): boolean =>
+  process.stdin.isTTY === true && process.stdout.isTTY === true
 
 const runInWorkspace = async <T>(workspaceRoot: string, run: () => Promise<T>): Promise<T> => {
   const previous = process.cwd()

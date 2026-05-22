@@ -8,7 +8,7 @@ import { migrateV1Workspace, type V1WorkspaceMigrationResult } from "./migrate-v
 import { resolveWorkspacePaths } from "./storage-layout.js"
 import { StoragePaths } from "./storage-paths.js"
 
-const LOGBOOK_VERSION = "2.0.0"
+const LOGBOOK_VERSION = "2.0.1"
 const MAX_CONFIG_JSON_BYTES = 65_536
 const textEncoder = new TextEncoder()
 

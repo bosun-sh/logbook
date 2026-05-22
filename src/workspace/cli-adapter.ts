@@ -11,7 +11,7 @@ const DEFAULT_MAX_STDIN_JSON_BYTES = 1_048_576
 const DEFAULT_MAX_ARGS = 200
 const DEFAULT_MAX_RESULT_JSON_BYTES = 4_194_304
 const textEncoder = new TextEncoder()
-export const LOGBOOK_VERSION = "2.0.0"
+export const LOGBOOK_VERSION = "2.0.1"
 export const LOGBOOK_CLI_HELP = `logbook ${LOGBOOK_VERSION}
 
 Usage:
