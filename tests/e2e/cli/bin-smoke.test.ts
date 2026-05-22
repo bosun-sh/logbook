@@ -251,6 +251,6 @@ describe("bin-cli smoke tests", () => {
 
     const version = await runCli(["--version"])
     expect(version.exitCode).toBe(0)
-    expect(version.stdout.trim()).toBe("2.0.0")
+    expect(version.stdout.trim()).toBe("2.0.1")
   })
 })

@@ -209,7 +209,7 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
         return {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: { name: "logbook", version: "2.0.0" },
+          serverInfo: { name: "logbook", version: "2.0.1" },
         }
       case "tools/list":
         return listTools()

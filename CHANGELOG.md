@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.0.1] — 2026-05-21
+
+### Fixed
+
+- Biome release gate formatting in `src/workspace/init-onboarding.ts` so `bun run release:dry-run` completes cleanly.
+
 ## [2.0.0] — 2026-05-09
 
 ### Breaking Changes

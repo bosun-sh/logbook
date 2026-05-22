@@ -46,7 +46,7 @@ import { workspaceStatusTool } from "./workspace-status-tool.js"
 const TOOL_LIMIT = 100
 const DESCRIPTION_MAX_BYTES = 2048
 const LOWERCASE_DOTTED_ID = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)*$/
-const LOGBOOK_V2_VERSION = "2.0.0"
+const LOGBOOK_V2_VERSION = "2.0.1"
 const textEncoder = new TextEncoder()
 
 type AnyDefinedTool = DefinedTool<any, any, any, never>
