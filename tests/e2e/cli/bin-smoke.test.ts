@@ -137,12 +137,14 @@ describe("bin-cli smoke tests", () => {
       )
 
       expect(exitCode).toBe(0)
-      const raw = await readFile(join(fakeHome, ".codex/config.toml"), "utf8")
+      await expect(stat(join(fakeHome, ".codex/config.toml"))).rejects.toThrow()
+      const raw = await readFile(join(workspaceRoot, ".codex/config.toml"), "utf8")
       const config = parseToml(raw) as Record<string, unknown>
       const mcpServers = config.mcp_servers as Record<string, unknown>
       const logbook = mcpServers.logbook as Record<string, unknown>
       expect(logbook.command).toBe("logbook")
       expect(logbook.args).toEqual(["mcp"])
+      expect(logbook.cwd).toBe(".")
       const env = logbook.env as Record<string, string>
       expect(env.LOGBOOK_WORKSPACE_ROOT).toBe(workspaceRoot)
     } finally {
@@ -155,10 +157,16 @@ describe("bin-cli smoke tests", () => {
     const fakeHome = await mkdtemp(join(tmpdir(), "logbook-fake-home-merge-"))
 
     try {
+      await mkdir(join(workspaceRoot, ".codex"), { recursive: true })
       await mkdir(join(fakeHome, ".codex"), { recursive: true })
       await writeFile(
-        join(fakeHome, ".codex/config.toml"),
+        join(workspaceRoot, ".codex/config.toml"),
         `[some_other_section]\nkey = "value"\n\n[mcp_servers.other]\ncommand = "other"\n`,
+        "utf8"
+      )
+      await writeFile(
+        join(fakeHome, ".codex/config.toml"),
+        `[mcp_servers.global]\ncommand = "global"\n`,
         "utf8"
       )
 
@@ -168,7 +176,9 @@ describe("bin-cli smoke tests", () => {
       )
 
       expect(exitCode).toBe(0)
-      const raw = await readFile(join(fakeHome, ".codex/config.toml"), "utf8")
+      const globalRaw = await readFile(join(fakeHome, ".codex/config.toml"), "utf8")
+      expect(globalRaw).toBe(`[mcp_servers.global]\ncommand = "global"\n`)
+      const raw = await readFile(join(workspaceRoot, ".codex/config.toml"), "utf8")
       const config = parseToml(raw) as Record<string, unknown>
       const otherSection = config.some_other_section as Record<string, unknown>
       expect(otherSection.key).toBe("value")
@@ -177,6 +187,10 @@ describe("bin-cli smoke tests", () => {
       expect(other.command).toBe("other")
       const logbook = mcpServers.logbook as Record<string, unknown>
       expect(logbook.command).toBe("logbook")
+      expect(logbook.args).toEqual(["mcp"])
+      expect(logbook.cwd).toBe(".")
+      const env = logbook.env as Record<string, string>
+      expect(env.LOGBOOK_WORKSPACE_ROOT).toBe(workspaceRoot)
     } finally {
       await rm(fakeHome, { recursive: true, force: true })
     }

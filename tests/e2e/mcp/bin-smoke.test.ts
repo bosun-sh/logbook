@@ -13,6 +13,12 @@ interface JsonRpcRequest {
   params?: unknown
 }
 
+interface JsonRpcNotification {
+  jsonrpc: "2.0"
+  method: string
+  params?: unknown
+}
+
 interface JsonRpcSuccess {
   jsonrpc: "2.0"
   id: number | null
@@ -59,12 +65,16 @@ const spawnMcpServer = (workspaceRoot: string) => {
     return JSON.parse(responseLine) as JsonRpcResponse
   }
 
+  const notify = (req: JsonRpcNotification): void => {
+    proc.stdin.write(`${JSON.stringify(req)}\n`)
+  }
+
   const kill = () => {
     proc.stdin.end()
     proc.kill()
   }
 
-  return { send, kill, exited: proc.exited }
+  return { send, notify, kill, exited: proc.exited }
 }
 
 describe("logbook mcp smoke tests", () => {
@@ -113,6 +123,26 @@ describe("logbook mcp smoke tests", () => {
       for (const name of toolNames) {
         expect(/^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)*$/.test(name)).toBe(true)
       }
+    }
+  })
+
+  test("notifications do not produce responses or block later requests", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-mcp-mode-notify-"))
+    server = spawnMcpServer(workspaceRoot)
+
+    const initialize = await server.send({ jsonrpc: "2.0", id: 1, method: "initialize" })
+    expect("result" in initialize).toBe(true)
+
+    server.notify({ jsonrpc: "2.0", method: "notifications/initialized" })
+    server.notify({ jsonrpc: "2.0", method: "notifications/unknown" })
+    const response = await server.send({ jsonrpc: "2.0", id: 2, method: "tools/list" })
+
+    expect(response.id).toBe(2)
+    expect("result" in response).toBe(true)
+    if ("result" in response) {
+      const result = response.result as Record<string, unknown>
+      const tools = result.tools as Array<{ name: string }>
+      expect(tools.map((tool) => tool.name)).toContain("task.create")
     }
   })
 

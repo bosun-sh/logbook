@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.0.2] — 2026-05-22
+
+### Added
+
+- GitHub Actions CI workflow that runs the full pre-merge gate on pushes and pull requests to `main`.
+- Manual npm release workflow with SemVer bump selection, changelog heading validation, release gate execution, publish, and tag creation.
+- Standardized CI scripts (`ci:precommit`, `ci:prepush`, `ci:premerge`) and Husky hooks wired to those gates.
+
+### Changed
+
+- Codex MCP onboarding now writes project-local config to `.codex/config.toml` with `cwd = "."` and `LOGBOOK_WORKSPACE_ROOT`, preserving existing TOML sections.
+- CLI, MCP server info, and plugin metadata now share a single `LOGBOOK_VERSION` constant.
+
+### Fixed
+
+- MCP stdio now treats JSON-RPC notifications as notifications, producing no response and allowing later requests to continue normally.
+
 ## [2.0.1] — 2026-05-21
 
 ### Fixed

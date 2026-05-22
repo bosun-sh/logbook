@@ -189,6 +189,8 @@ logbook create-task --title "..." --definition-of-done "..." --predicted-k-token
 logbook list-tasks --status in_progress
 ```
 
+`logbook init --mcp-client codex` writes project-local Codex MCP config to `.codex/config.toml`, preserving existing local TOML sections. Older global `~/.codex/config.toml` Logbook entries may need manual removal.
+
 all commands write a single-line JSON envelope to stdout:
 
 ```json

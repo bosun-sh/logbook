@@ -55,16 +55,17 @@ add `.logbook/storage/` to `.gitignore`:
 }
 ```
 
-**Codex** — add to `~/.codex/config.toml`. unlike the project-local configs above, codex config is global, so `LOGBOOK_WORKSPACE_ROOT` tells the server which workspace to use:
+**Codex** — add to `.codex/config.toml` in your project:
 
 ```toml
 [mcp_servers.logbook]
 command = "logbook"
 args = ["mcp"]
+cwd = "."
 env = { LOGBOOK_WORKSPACE_ROOT = "/absolute/path/to/your/project" }
 ```
 
-`logbook init --mcp-client codex` writes this automatically with the correct absolute path.
+`logbook init --mcp-client codex` writes this project-local config automatically with the correct absolute path. If an older Logbook init wrote a global `~/.codex/config.toml` entry, remove that global `mcp_servers.logbook` entry manually.
 
 ## 4. create your first task
 

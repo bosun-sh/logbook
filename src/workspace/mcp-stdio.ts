@@ -40,10 +40,16 @@ export const runMcpStdio = (): void => {
       return
     }
 
-    const id = message.id ?? null
+    const hasId = Object.hasOwn(message, "id")
+    const id = hasId ? message.id : null
     const method = message.method
     if (typeof method !== "string") {
+      if (!hasId) return
       sendError(id, -32600, "Invalid Request: missing method.")
+      return
+    }
+
+    if (!hasId) {
       return
     }
 
