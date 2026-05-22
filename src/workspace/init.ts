@@ -3,12 +3,12 @@ import { dirname, join, resolve } from "node:path"
 import { createId } from "@logbook/shared/ids.js"
 import type { ToolResult } from "@logbook/shared/result.js"
 import { nowIso } from "@logbook/shared/time.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { type Clock, Effect } from "effect"
 import { migrateV1Workspace, type V1WorkspaceMigrationResult } from "./migrate-v1.js"
 import { resolveWorkspacePaths } from "./storage-layout.js"
 import { StoragePaths } from "./storage-paths.js"
 
-const LOGBOOK_VERSION = "2.0.1"
 const MAX_CONFIG_JSON_BYTES = 65_536
 const textEncoder = new TextEncoder()
 

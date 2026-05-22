@@ -3,6 +3,7 @@ import type { OhtoolsError, RunResult, RuntimeOptions } from "@bosun-sh/ohtools"
 import { publicToolSchemas } from "@logbook/plugin/public-schemas.js"
 import { toToolResult } from "@logbook/plugin/results.js"
 import type { ToolResult } from "@logbook/shared/result.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { readLinearApiToken, readLinearWorkspaceConfig } from "@logbook/sync/linear/config.js"
 import { pullLinearSync } from "@logbook/sync/linear/pull.js"
 import { pushLinearSync } from "@logbook/sync/linear/push.js"
@@ -209,7 +210,7 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
         return {
           protocolVersion: "2024-11-05",
           capabilities: { tools: {} },
-          serverInfo: { name: "logbook", version: "2.0.1" },
+          serverInfo: { name: "logbook", version: LOGBOOK_VERSION },
         }
       case "tools/list":
         return listTools()

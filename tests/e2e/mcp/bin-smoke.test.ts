@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 
 const BIN_CLI_ENTRY = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
 
@@ -79,7 +80,7 @@ describe("logbook mcp smoke tests", () => {
     }
   })
 
-  test("initialize returns serverInfo.version 2.0.0", async () => {
+  test("initialize returns current serverInfo.version", async () => {
     workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-mcp-mode-"))
     server = spawnMcpServer(workspaceRoot)
 
@@ -89,7 +90,7 @@ describe("logbook mcp smoke tests", () => {
     if ("result" in response) {
       const result = response.result as Record<string, unknown>
       const serverInfo = result.serverInfo as Record<string, unknown>
-      expect(serverInfo.version).toBe("2.0.0")
+      expect(serverInfo.version).toBe(LOGBOOK_VERSION)
       expect(serverInfo.name).toBe("logbook")
     }
   })

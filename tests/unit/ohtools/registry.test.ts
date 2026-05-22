@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import type { OhtoolsError, RunResult } from "@bosun-sh/ohtools"
 import { logbookPlugins } from "@logbook/plugin/registry.js"
 import { registerLogbookTools } from "@logbook/plugin/tool-registry.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { createLogbookApp } from "@logbook/workspace/ohtools-app.js"
 import { Effect } from "effect"
 
@@ -148,7 +149,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "context",
             name: "context",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["context"],
             toolIds: [
@@ -165,7 +166,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "epic",
             name: "epic",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["epic"],
             toolIds: ["epic.create", "epic.delete", "epic.get", "epic.list", "epic.update"],
@@ -173,7 +174,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "hook",
             name: "hook",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["hook"],
             toolIds: ["hook.list", "hook.run"],
@@ -181,7 +182,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "plugin",
             name: "plugin",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["plugin"],
             toolIds: ["plugin.list"],
@@ -189,7 +190,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "story",
             name: "story",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["story"],
             toolIds: ["story.create", "story.delete", "story.get", "story.list", "story.update"],
@@ -197,7 +198,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "sync",
             name: "sync",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["sync"],
             toolIds: [
@@ -212,7 +213,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "task",
             name: "task",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["task"],
             toolIds: [
@@ -231,7 +232,7 @@ describe("logbook ohtools registry", () => {
           {
             id: "workspace",
             name: "workspace",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["workspace"],
             toolIds: ["workspace.init", "workspace.status"],

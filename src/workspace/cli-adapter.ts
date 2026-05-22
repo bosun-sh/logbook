@@ -2,16 +2,18 @@
 import type { OhtoolsError, RunResult, RuntimeOptions } from "@bosun-sh/ohtools"
 import { toToolResult } from "@logbook/plugin/results.js"
 import type { ToolResult } from "@logbook/shared/result.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { Effect } from "effect"
 import { cliCommands } from "./cli-commands.js"
 import { createLogbookApp } from "./ohtools-app.js"
 import { translateV1CliCommand } from "./v1-cli-aliases.js"
 
+export { LOGBOOK_VERSION }
+
 const DEFAULT_MAX_STDIN_JSON_BYTES = 1_048_576
 const DEFAULT_MAX_ARGS = 200
 const DEFAULT_MAX_RESULT_JSON_BYTES = 4_194_304
 const textEncoder = new TextEncoder()
-export const LOGBOOK_VERSION = "2.0.1"
 export const LOGBOOK_CLI_HELP = `logbook ${LOGBOOK_VERSION}
 
 Usage:
