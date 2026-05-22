@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { publicToolSchemas } from "@logbook/plugin/public-schemas.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { runCli } from "@logbook/workspace/cli-adapter.js"
 import { cliCommands } from "@logbook/workspace/cli-commands.js"
 import { mcpToolRegistry } from "@logbook/workspace/mcp-tools.js"
@@ -21,10 +22,12 @@ describe("CLI and MCP adapter contracts", () => {
       bin: Record<string, string>
       main: string
       types: string
+      version: string
       exports: Record<string, unknown>
       files: string[]
     }
 
+    expect(packageJson.version).toBe(LOGBOOK_VERSION)
     expect(packageJson.bin).toEqual({ logbook: "bin/logbook.cjs" })
     expect(packageJson.main).toBe("./dist/index.js")
     expect(packageJson.types).toBe("./dist/index.d.ts")

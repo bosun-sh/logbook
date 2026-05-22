@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdir, mkdtemp, readFile, rm, stat, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { runCli } from "@logbook/workspace/cli-adapter.js"
 import { initWorkspace } from "@logbook/workspace/init.js"
 import {
@@ -88,7 +89,7 @@ describe("workspace.init", () => {
     expect(metadata).toMatchObject({
       schemaVersion: "2",
       workspaceId: expect.stringMatching(/^workspace_[0-9a-f]{32}$/),
-      logbookVersion: "2.0.0",
+      logbookVersion: LOGBOOK_VERSION,
       storageRoot: ".logbook/storage",
     })
     expect(typeof metadata.createdAt).toBe("string")

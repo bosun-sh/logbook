@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { parse as parseToml } from "smol-toml"
 
 const BIN_CLI_ENTRY = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
@@ -251,6 +252,6 @@ describe("bin-cli smoke tests", () => {
 
     const version = await runCli(["--version"])
     expect(version.exitCode).toBe(0)
-    expect(version.stdout.trim()).toBe("2.0.1")
+    expect(version.stdout.trim()).toBe(LOGBOOK_VERSION)
   })
 })

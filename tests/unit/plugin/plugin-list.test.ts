@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { listPlugins } from "@logbook/plugin/list.js"
 import { registerLogbookTools } from "@logbook/plugin/tool-registry.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 
 const decodeCursor = (cursor: string) =>
   JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"))
@@ -16,7 +17,7 @@ describe("listPlugins", () => {
           {
             id: "context",
             name: "context",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["context"],
             toolIds: [
@@ -33,7 +34,7 @@ describe("listPlugins", () => {
           {
             id: "epic",
             name: "epic",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["epic"],
             toolIds: ["epic.create", "epic.delete", "epic.get", "epic.list", "epic.update"],
@@ -41,7 +42,7 @@ describe("listPlugins", () => {
           {
             id: "hook",
             name: "hook",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["hook"],
             toolIds: ["hook.list", "hook.run"],
@@ -49,7 +50,7 @@ describe("listPlugins", () => {
           {
             id: "plugin",
             name: "plugin",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["plugin"],
             toolIds: ["plugin.list"],
@@ -57,7 +58,7 @@ describe("listPlugins", () => {
           {
             id: "story",
             name: "story",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["story"],
             toolIds: ["story.create", "story.delete", "story.get", "story.list", "story.update"],
@@ -65,7 +66,7 @@ describe("listPlugins", () => {
           {
             id: "sync",
             name: "sync",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["sync"],
             toolIds: [
@@ -80,7 +81,7 @@ describe("listPlugins", () => {
           {
             id: "task",
             name: "task",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["task"],
             toolIds: [
@@ -99,7 +100,7 @@ describe("listPlugins", () => {
           {
             id: "workspace",
             name: "workspace",
-            version: "2.0.0",
+            version: LOGBOOK_VERSION,
             enabled: true,
             groups: ["workspace"],
             toolIds: ["workspace.init", "workspace.status"],

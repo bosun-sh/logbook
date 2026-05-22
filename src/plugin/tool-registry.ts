@@ -19,6 +19,7 @@ import { getEpic } from "@logbook/epic/get.js"
 import { listEpics } from "@logbook/epic/list.js"
 import { updateEpic } from "@logbook/epic/update.js"
 import type { ToolResult } from "@logbook/shared/result.js"
+import { LOGBOOK_VERSION } from "@logbook/shared/version.js"
 import { createStory } from "@logbook/story/create.js"
 import { deleteStory } from "@logbook/story/delete.js"
 import { getStory } from "@logbook/story/get.js"
@@ -46,7 +47,6 @@ import { workspaceStatusTool } from "./workspace-status-tool.js"
 const TOOL_LIMIT = 100
 const DESCRIPTION_MAX_BYTES = 2048
 const LOWERCASE_DOTTED_ID = /^[a-z][a-z0-9]*(\.[a-z][a-z0-9-]*)*$/
-const LOGBOOK_V2_VERSION = "2.0.1"
 const textEncoder = new TextEncoder()
 
 type AnyDefinedTool = DefinedTool<any, any, any, never>
@@ -274,7 +274,7 @@ function createPluginDefinition(
     metadata: {
       id,
       name: id,
-      version: LOGBOOK_V2_VERSION,
+      version: LOGBOOK_VERSION,
       enabled: true,
       groups: Object.freeze([id]),
       toolIds: Object.freeze(
