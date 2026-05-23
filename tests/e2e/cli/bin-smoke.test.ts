@@ -9,7 +9,12 @@ const BIN_CLI_ENTRY = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
 
 const runCli = async (
   args: string[],
-  options: { workspaceRoot?: string; stdin?: string; home?: string } = {}
+  options: {
+    workspaceRoot?: string
+    stdin?: string
+    home?: string
+    skipSkillInstall?: boolean
+  } = {}
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> => {
   const env: Record<string, string> = Object.fromEntries(
     Object.entries(process.env).filter(([, v]) => v !== undefined) as [string, string][]
@@ -19,6 +24,9 @@ const runCli = async (
   }
   if (options.home) {
     env.HOME = options.home
+  }
+  if (options.skipSkillInstall) {
+    env.LOGBOOK_SKIP_SKILL_INSTALL = "1"
   }
 
   const proc = Bun.spawn(["bun", "run", BIN_CLI_ENTRY, ...args], {
@@ -84,12 +92,10 @@ describe("bin-cli smoke tests", () => {
       "utf8"
     )
 
-    const { exitCode } = await runCli([
-      "init",
-      `--path=${workspaceRoot}`,
-      "--mcp-client=claude",
-      "--no-linear",
-    ])
+    const { exitCode } = await runCli(
+      ["init", `--path=${workspaceRoot}`, "--mcp-client=claude", "--no-linear"],
+      { skipSkillInstall: true }
+    )
 
     expect(exitCode).toBe(0)
     const settings = JSON.parse(
@@ -107,12 +113,10 @@ describe("bin-cli smoke tests", () => {
       "utf8"
     )
 
-    const { exitCode } = await runCli([
-      "init",
-      `--path=${workspaceRoot}`,
-      "--mcp-client=opencode",
-      "--no-linear",
-    ])
+    const { exitCode } = await runCli(
+      ["init", `--path=${workspaceRoot}`, "--mcp-client=opencode", "--no-linear"],
+      { skipSkillInstall: true }
+    )
 
     expect(exitCode).toBe(0)
     const config = JSON.parse(
@@ -133,7 +137,7 @@ describe("bin-cli smoke tests", () => {
     try {
       const { exitCode } = await runCli(
         ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
-        { home: fakeHome }
+        { home: fakeHome, skipSkillInstall: true }
       )
 
       expect(exitCode).toBe(0)
@@ -172,7 +176,7 @@ describe("bin-cli smoke tests", () => {
 
       const { exitCode } = await runCli(
         ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
-        { home: fakeHome }
+        { home: fakeHome, skipSkillInstall: true }
       )
 
       expect(exitCode).toBe(0)
@@ -236,7 +240,7 @@ describe("bin-cli smoke tests", () => {
     ])
 
     expect(exitCode).toBe(0)
-    expect(stdout).not.toContain("Installed logbook skill")
+    expect(stdout).not.toContain("Skill installed")
     expect(stdout).not.toContain("Skill install skipped")
     expect(stderr).not.toContain("Skill install skipped")
     const lockExists = await stat(join(workspaceRoot, "skills-lock.json"))
@@ -248,6 +252,105 @@ describe("bin-cli smoke tests", () => {
     ) as Record<string, unknown>
     const mcpServers = settings.mcpServers as Record<string, unknown>
     expect(mcpServers.logbook).toBeDefined()
+  })
+
+  test("init --no-skill skips skill installation for OpenCode", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-noskill-opencode-"))
+
+    const { exitCode, stdout, stderr } = await runCli([
+      "init",
+      `--path=${workspaceRoot}`,
+      "--mcp-client=opencode",
+      "--no-linear",
+      "--no-skill",
+    ])
+
+    expect(exitCode).toBe(0)
+    expect(stdout).not.toContain("Skill installed")
+    expect(stdout).not.toContain("Skill install skipped")
+    expect(stderr).not.toContain("Skill install skipped")
+    const lockExists = await stat(join(workspaceRoot, "skills-lock.json"))
+      .then(() => true)
+      .catch(() => false)
+    expect(lockExists).toBe(false)
+    const config = JSON.parse(
+      await readFile(join(workspaceRoot, "opencode.json"), "utf8")
+    ) as Record<string, unknown>
+    const mcp = config.mcp as Record<string, unknown>
+    expect(mcp.logbook).toBeDefined()
+  })
+
+  test("init --no-skill skips skill installation for Codex", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-noskill-codex-"))
+    const fakeHome = await mkdtemp(join(tmpdir(), "logbook-fake-home-noskill-codex-"))
+
+    try {
+      const { exitCode, stdout, stderr } = await runCli(
+        ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear", "--no-skill"],
+        { home: fakeHome }
+      )
+
+      expect(exitCode).toBe(0)
+      expect(stdout).not.toContain("Skill installed")
+      expect(stdout).not.toContain("Skill install skipped")
+      expect(stderr).not.toContain("Skill install skipped")
+      const lockExists = await stat(join(workspaceRoot, "skills-lock.json"))
+        .then(() => true)
+        .catch(() => false)
+      expect(lockExists).toBe(false)
+      const raw = await readFile(join(workspaceRoot, ".codex/config.toml"), "utf8")
+      const config = parseToml(raw) as Record<string, unknown>
+      const mcpServers = config.mcp_servers as Record<string, unknown>
+      expect(mcpServers.logbook).toBeDefined()
+    } finally {
+      await rm(fakeHome, { recursive: true, force: true })
+    }
+  })
+
+  test("init with opencode attempts skill install (LOGBOOK_SKIP_SKILL_INSTALL mutes it)", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-skill-opencode-"))
+
+    const { exitCode, stdout } = await runCli(
+      ["init", `--path=${workspaceRoot}`, "--mcp-client=opencode", "--no-linear"],
+      { skipSkillInstall: true }
+    )
+
+    expect(exitCode).toBe(0)
+    expect(stdout).toContain("Installing logbook skill for OpenCode")
+    const lockExists = await stat(join(workspaceRoot, "skills-lock.json"))
+      .then(() => true)
+      .catch(() => false)
+    expect(lockExists).toBe(false)
+    const config = JSON.parse(
+      await readFile(join(workspaceRoot, "opencode.json"), "utf8")
+    ) as Record<string, unknown>
+    const mcp = config.mcp as Record<string, unknown>
+    expect(mcp.logbook).toBeDefined()
+  })
+
+  test("init with codex attempts skill install (LOGBOOK_SKIP_SKILL_INSTALL mutes it)", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-bin-cli-skill-codex-"))
+    const fakeHome = await mkdtemp(join(tmpdir(), "logbook-fake-home-skill-codex-"))
+
+    try {
+      const { exitCode, stdout } = await runCli(
+        ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
+        { home: fakeHome, skipSkillInstall: true }
+      )
+
+      expect(exitCode).toBe(0)
+      expect(stdout).toContain("Installing logbook skill for Codex")
+      const lockExists = await stat(join(workspaceRoot, "skills-lock.json"))
+        .then(() => true)
+        .catch(() => false)
+      expect(lockExists).toBe(false)
+      const raw = await readFile(join(workspaceRoot, ".codex/config.toml"), "utf8")
+      const config = parseToml(raw) as Record<string, unknown>
+      const mcpServers = config.mcp_servers as Record<string, unknown>
+      expect(mcpServers.logbook).toBeDefined()
+    } finally {
+      await rm(fakeHome, { recursive: true, force: true })
+    }
   })
 
   test("unknown command returns error with exit code 1", async () => {

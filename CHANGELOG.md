@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.0.3] — 2026-05-22
+
+### Fixed
+
+- `logbook init` now installs the logbook skill for all MCP clients (`claude`, `opencode`, `codex`), not only Claude. The `--agent` flag is always passed to the skills CLI so the install is non-interactive and safe in `--yes` / CI runs.
+- Skill install subprocess switched from `Bun.spawn` to `node:child_process.spawn` so it executes correctly from the published Node binary (`bin/logbook.cjs`).
+- Skill install retry message moved to stdout and includes the exact `--agent <name>` flag needed to re-run manually.
+
+---
+
 ## [2.0.2] — 2026-05-22
 
 ### Added
