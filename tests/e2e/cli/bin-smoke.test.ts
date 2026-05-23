@@ -92,12 +92,10 @@ describe("bin-cli smoke tests", () => {
       "utf8"
     )
 
-    const { exitCode } = await runCli([
-      "init",
-      `--path=${workspaceRoot}`,
-      "--mcp-client=claude",
-      "--no-linear",
-    ])
+    const { exitCode } = await runCli(
+      ["init", `--path=${workspaceRoot}`, "--mcp-client=claude", "--no-linear"],
+      { skipSkillInstall: true }
+    )
 
     expect(exitCode).toBe(0)
     const settings = JSON.parse(
@@ -115,12 +113,10 @@ describe("bin-cli smoke tests", () => {
       "utf8"
     )
 
-    const { exitCode } = await runCli([
-      "init",
-      `--path=${workspaceRoot}`,
-      "--mcp-client=opencode",
-      "--no-linear",
-    ])
+    const { exitCode } = await runCli(
+      ["init", `--path=${workspaceRoot}`, "--mcp-client=opencode", "--no-linear"],
+      { skipSkillInstall: true }
+    )
 
     expect(exitCode).toBe(0)
     const config = JSON.parse(
@@ -141,7 +137,7 @@ describe("bin-cli smoke tests", () => {
     try {
       const { exitCode } = await runCli(
         ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
-        { home: fakeHome }
+        { home: fakeHome, skipSkillInstall: true }
       )
 
       expect(exitCode).toBe(0)
@@ -180,7 +176,7 @@ describe("bin-cli smoke tests", () => {
 
       const { exitCode } = await runCli(
         ["init", `--path=${workspaceRoot}`, "--mcp-client=codex", "--no-linear"],
-        { home: fakeHome }
+        { home: fakeHome, skipSkillInstall: true }
       )
 
       expect(exitCode).toBe(0)
