@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process"
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { createInterface } from "node:readline/promises"
@@ -88,13 +89,15 @@ export const runInitOnboarding = async (
     } else {
       const mcp = await writeMcpConfig(workspaceRoot, mcpClient)
       stdout(`MCP configured for ${formatMcpClient(mcp.client)} at ${mcp.path}.\n`)
-      if (mcpClient === "claude" && !parsed.value.noSkill && canInstallLogbookSkill()) {
-        const installed = await tryInstallLogbookSkill(workspaceRoot)
+      if (!parsed.value.noSkill) {
+        const agent = SKILLS_AGENT_BY_MCP_CLIENT[mcpClient]
+        stdout(`Installing logbook skill for ${formatMcpClient(mcpClient)}…\n`)
+        const installed = await tryInstallLogbookSkill(workspaceRoot, agent)
         if (installed) {
-          stdout("Installed logbook skill via skills CLI.\n")
+          stdout("Skill installed.\n")
         } else {
-          stderr(
-            "Skill install skipped (run `npx skills add https://github.com/bosun-sh/skills --skill logbook` to retry).\n"
+          stdout(
+            `Skill install skipped (run \`npx skills add https://github.com/bosun-sh/skills --skill logbook --agent ${agent}\` to retry).\n`
           )
         }
       }
@@ -412,7 +415,13 @@ const writeToolFailure = (
   stderr(`error: ${result.error.message}\n`)
 }
 
-const SKILL_INSTALL_ARGS = [
+const SKILLS_AGENT_BY_MCP_CLIENT: Record<Exclude<McpClient, "none">, string> = {
+  claude: "claude-code",
+  opencode: "opencode",
+  codex: "codex",
+}
+
+const buildSkillInstallArgs = (agent: string): readonly string[] => [
   "npx",
   "--yes",
   "skills",
@@ -420,24 +429,27 @@ const SKILL_INSTALL_ARGS = [
   "https://github.com/bosun-sh/skills",
   "--skill",
   "logbook",
-] as const
+  "--agent",
+  agent,
+]
 
-const tryInstallLogbookSkill = async (workspaceRoot: string): Promise<boolean> => {
-  try {
-    const proc = Bun.spawn([...SKILL_INSTALL_ARGS], {
-      cwd: workspaceRoot,
-      stdout: "ignore",
-      stderr: "ignore",
-    })
-    return (await proc.exited) === 0
-  } catch {
-    // best-effort: network or missing runtime must not block init
-    return false
-  }
+const tryInstallLogbookSkill = async (workspaceRoot: string, agent: string): Promise<boolean> => {
+  if (process.env.LOGBOOK_SKIP_SKILL_INSTALL === "1") return false
+  const [command, ...args] = buildSkillInstallArgs(agent)
+  if (command === undefined) return false
+  return new Promise((resolveExit) => {
+    try {
+      const proc = spawn(command, args, {
+        cwd: workspaceRoot,
+        stdio: ["ignore", "ignore", "ignore"],
+      })
+      proc.on("error", () => resolveExit(false))
+      proc.on("exit", (code) => resolveExit(code === 0))
+    } catch {
+      resolveExit(false)
+    }
+  })
 }
-
-const canInstallLogbookSkill = (): boolean =>
-  process.stdin.isTTY === true && process.stdout.isTTY === true
 
 const runInWorkspace = async <T>(workspaceRoot: string, run: () => Promise<T>): Promise<T> => {
   const previous = process.cwd()
