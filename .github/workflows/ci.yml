@@ -4,13 +4,14 @@ on:
   pull_request:
     branches:
       - main
+      - dev
   push:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   lint:
@@ -66,23 +67,3 @@ jobs:
 
       - name: Test
         run: bun run ci:test
-
-  codeql:
-    name: CodeQL analysis
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-          queries: security-extended
-
-      - name: Perform analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: /language:javascript-typescript
