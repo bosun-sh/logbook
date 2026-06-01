@@ -13,19 +13,13 @@ permissions:
 
 jobs:
   npm:
+    if: github.ref == 'refs/heads/main'
     name: Publish npm package
     runs-on: ubuntu-latest
     environment: npm
     timeout-minutes: 20
 
     steps:
-      - name: Require main branch
-        run: |
-          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "Manual releases must run from main. Current ref: $GITHUB_REF" >&2
-            exit 1
-          fi
-
       - name: Checkout
         uses: actions/checkout@v6
         with:
