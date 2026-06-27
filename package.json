@@ -4,6 +4,10 @@
   "description": "File-system kanban board CLI and MCP server for AI agents",
   "license": "Apache-2.0",
   "type": "module",
+  "author": "bosun.sh",
+  "keywords": ["kanban", "tasks", "mcp", "ai", "agents", "cli", "logbook"],
+  "bugs": {"url": "https://github.com/bosun-sh/logbook/issues"},
+  "homepage": "https://github.com/bosun-sh/logbook#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/bosun-sh/logbook.git"
@@ -24,8 +28,7 @@
     "dist/",
     "CHANGELOG.md",
     "LICENSE",
-    "README.md",
-    "quickstart.md"
+    "README.md"
   ],
   "engines": {
     "node": ">=18.0.0"

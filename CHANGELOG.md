@@ -100,7 +100,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - **Structured JSON logger** — new `Logger` abstraction emits JSON lines to stderr. All `console.warn` calls replaced with `logger.warn`. Controlled via `LOGBOOK_LOG_LEVEL` env var (`debug|info|warn|error`, default `warn`).
 - **Unrecognized hook key warnings** — `hook-config-loader` now warns via the structured logger when a `config.yml` contains keys outside the known schema, surfacing typos early.
 - **Project and milestone filters for `list_tasks`** — callers can now pass `project` and `milestone` query parameters to scope task listing without loading the full store.
-- **`logbook-mcp init` scaffold command** — running `logbook-mcp init` creates `tasks.jsonl`, the `hooks/` directory tree, and emits client config snippets for Claude Code and OpenCode.
+- **`logbook init` scaffold command** — running `logbook init` creates `tasks.jsonl`, the `hooks/` directory tree, and emits client config snippets for Claude Code and OpenCode.
 - **`--version` / `-v` flags** — prints the package version and exits.
 - **`--help` / `-h` flags** — prints command usage, available subcommands, and all environment variables.
 - **`quickstart.md`** — zero-to-running onboarding guide: install, init, wire into an MCP client, and verify the first task.
@@ -153,7 +153,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- **MCP server** (`logbook-mcp`) with five tools: `list_tasks`, `current_task`, `update_task`, `create_task`, `edit_task`
+- **MCP server** (`@bosun-sh/logbook`) with five tools: `list_tasks`, `current_task`, `update_task`, `create_task`, `edit_task`
 - **Task lifecycle** with seven statuses: `backlog → todo → in_progress → pending_review → done` (plus `need_info` and `blocked` side-channels)
 - **Hooks system** — declarative `config.yml` + script pairs that fire on `task.status_changed` events; supports any executable language
 - **Built-in hooks**:
@@ -167,6 +167,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Package
 
-- Published as `logbook-mcp` on npm
+- Published as `@bosun-sh/logbook` on npm
 - Requires Bun ≥ 1.0.0
 - Two production dependencies: `effect`, `zod`
