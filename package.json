@@ -5,8 +5,18 @@
   "license": "Apache-2.0",
   "type": "module",
   "author": "bosun.sh",
-  "keywords": ["kanban", "tasks", "mcp", "ai", "agents", "cli", "logbook"],
-  "bugs": {"url": "https://github.com/bosun-sh/logbook/issues"},
+  "keywords": [
+    "kanban",
+    "tasks",
+    "mcp",
+    "ai",
+    "agents",
+    "cli",
+    "logbook"
+  ],
+  "bugs": {
+    "url": "https://github.com/bosun-sh/logbook/issues"
+  },
   "homepage": "https://github.com/bosun-sh/logbook#readme",
   "repository": {
     "type": "git",

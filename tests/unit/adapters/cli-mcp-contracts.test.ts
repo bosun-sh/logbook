@@ -33,7 +33,7 @@ describe("CLI and MCP adapter contracts", () => {
     expect(packageJson.types).toBe("./dist/index.d.ts")
     expect(Object.hasOwn(packageJson.exports, ".")).toBe(true)
     expect(packageJson.files).toEqual(
-      expect.arrayContaining(["dist/", "quickstart.md", "CHANGELOG.md"])
+      expect.arrayContaining(["dist/", "CHANGELOG.md", "README.md"])
     )
   })
 
