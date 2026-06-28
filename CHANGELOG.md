@@ -8,6 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.1.0] - 2026-06-28
+
+---
+
 ## [2.0.3] — 2026-05-22
 
 ### Fixed
@@ -173,7 +177,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Requires Bun ≥ 1.0.0
 - Two production dependencies: `effect`, `zod`
 
-[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/bosun-sh/logbook/compare/v2.0.3...v2.1.0
 [2.0.3]: https://github.com/bosun-sh/logbook/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/bosun-sh/logbook/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/bosun-sh/logbook/releases/tag/v2.0.1
