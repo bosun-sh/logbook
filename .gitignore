@@ -143,3 +143,5 @@ vite.config.ts.timestamp-*
 .agents/
 skills-lock.json
 AGENTS.md
+.npm-cache/
+.codex/

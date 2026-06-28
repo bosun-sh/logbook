@@ -1,5 +1,9 @@
 # logbook — kanban for ai agents
 
+[![CI](https://github.com/bosun-sh/logbook/actions/workflows/ci.yml/badge.svg)](https://github.com/bosun-sh/logbook/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@bosun-sh/logbook)](https://www.npmjs.com/package/@bosun-sh/logbook)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 logbook is a file-system kanban board for autonomous AI agents. It tracks epics, stories, tasks, and context entries across a structured lifecycle so agents and humans share a single source of truth without context bloat.
 
 → **new here?** see [quickstart.md](quickstart.md) to get running in 5 minutes.
@@ -342,3 +346,11 @@ see `CHANGELOG.md` for the full v2.0.0 breaking-change list.
 - **architecture**: ohtools plugin registry, hexagonal adapters (CLI + MCP), vertical slices per entity
 - **persistence**: JSONL — append-only, one record per line, full-scan reads; DuckDB for optional ad-hoc queries
 - **validation**: Zod at every public boundary (MCP input, CLI flags, filesystem reads)
+
+## contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, the CI gate to run before a PR, and the Conventional Commits message format required.
+
+## license
+
+[Apache-2.0](LICENSE)
