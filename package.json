@@ -74,7 +74,7 @@
     "release:dry-run": "bun run ci:premerge",
     "release": "bun run release:dry-run && node scripts/npm-publish.mjs",
     "publish:dev": "bun link .",
-    "publish:npm": "bun publish --access public"
+    "publish:npm": "npm publish --access public"
   },
   "dependencies": {
     "@bosun-sh/ohtools": "^0.1.0",
