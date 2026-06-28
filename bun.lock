@@ -5,7 +5,7 @@
     "": {
       "name": "logbook",
       "dependencies": {
-        "@bosun-sh/ohtools": "^0.1.0",
+        "@bosun-sh/ohtools": "^0.2.0",
         "@duckdb/node-api": "1.5.2-r.1",
         "effect": "3.21.2",
         "smol-toml": "^1.6.1",
@@ -39,7 +39,7 @@
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.4.9", "", { "os": "win32", "cpu": "x64" }, "sha512-NS4g/2G9SoQ4ktKtz31pvyc/rmgzlcIDCGU/zWbmHJAqx6gcRj2gj5Q/guXhoWTzCUaQZDIqiCQXHS7BcGYc0w=="],
 
-    "@bosun-sh/ohtools": ["@bosun-sh/ohtools@0.1.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.29.0", "effect": "^3.13.10" }, "bin": { "ohtools": "dist/bin/ohtools.js" } }, "sha512-VJiJMzLhl4mE8SPJAoKZnYpio2KqWLLbQXh91VzeosN+JBBYU6RzDDZ7U9GOhOE7xEzqcYfCXotwXMDnVGf2NA=="],
+    "@bosun-sh/ohtools": ["@bosun-sh/ohtools@0.2.0", "", { "dependencies": { "@modelcontextprotocol/sdk": "^1.29.0", "effect": "^3.13.10" }, "bin": { "ohtools": "dist/bin/ohtools.js" } }, "sha512-eQZbZ62tX3N9RjpbD+65CICavK0w95Y7B6sh6jM+eGo26Qj+Jt5LxXUgXbJRUceZRm2wTNNY+ahsOFg/OoP2cA=="],
 
     "@duckdb/node-api": ["@duckdb/node-api@1.5.2-r.1", "", { "dependencies": { "@duckdb/node-bindings": "1.5.2-r.1" } }, "sha512-OzBBnS0JGXMoS5mzKNY/Ylr7SshcRQiLFIoxQ4AlePwJ2fNeDL/fbHu/knjxUrXwW1fJBTUgwWftmxDdnZZb3A=="],
 
@@ -336,7 +336,5 @@
     "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
 
     "zod-to-json-schema": ["zod-to-json-schema@3.25.2", "", { "peerDependencies": { "zod": "^3.25.28 || ^4" } }, "sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA=="],
-
-    "@bosun-sh/ohtools/effect": ["effect@3.21.0", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "fast-check": "^3.23.1" } }, "sha512-PPN80qRokCd1f015IANNhrwOnLO7GrrMQfk4/lnZRE/8j7UPWrNNjPV0uBrZutI/nHzernbW+J0hdqQysHiSnQ=="],
   }
 }
