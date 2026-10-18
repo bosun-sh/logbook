@@ -5,7 +5,11 @@ import { EpicSchema } from "@logbook/epic/schema.js"
 import { JsonlRepository } from "@logbook/shared/storage/jsonl-repository.js"
 import type { Story } from "@logbook/story/schema.js"
 import { StorySchema } from "@logbook/story/schema.js"
-import type { TaskRepository as TaskRepositoryPort, TaskStatus } from "@logbook/task/ports.js"
+import type {
+  TaskRepositoryError,
+  TaskRepository as TaskRepositoryPort,
+  TaskStatus,
+} from "@logbook/task/ports.js"
 import type { Task } from "@logbook/task/schema.js"
 import { TaskSchema } from "@logbook/task/schema.js"
 import { Effect } from "effect"
@@ -54,9 +58,9 @@ class TaskRepositoryPortAdapter implements TaskRepositoryPort {
     })
   }
 
-  update(task: Task): Effect.Effect<void, { readonly _tag: "not_found"; readonly taskId: string }> {
+  update(task: Task): Effect.Effect<void, TaskRepositoryError> {
     return Effect.mapBoth(this.store.update(task), {
-      onFailure: () => ({ _tag: "not_found" as const, taskId: task.id }),
+      onFailure: (cause) => ({ ...cause, taskId: task.id }),
       onSuccess: () => undefined,
     })
   }

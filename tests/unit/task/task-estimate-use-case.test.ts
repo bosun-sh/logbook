@@ -34,7 +34,7 @@ class InMemoryTaskRepository implements TaskRepositoryShape {
     return Effect.succeed(undefined)
   }
 
-  update(task: Task) {
+  update(task: Task): Effect.Effect<void, unknown> {
     this.store.set(task.id, task)
     return Effect.succeed(undefined)
   }
@@ -182,5 +182,29 @@ describe("estimateTask", () => {
         },
       },
     })
+  })
+
+  test("above-limit estimates retain storage errors without changing existing data", async () => {
+    const repo = new InMemoryTaskRepository()
+    const task = makeTask()
+    await run(repo.save(task))
+    repo.update = () => Effect.fail({ _tag: "storage_error", message: "Write unavailable" })
+
+    const result = await run(
+      Effect.provide(
+        estimateTask({
+          id: task.id,
+          predictedKTokens: 128,
+          complexity: "large",
+        }),
+        makeLayer(repo)
+      )
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "storage_error", message: "Write unavailable" },
+    })
+    expect(repo.inspect(task.id)).toEqual(task)
   })
 })

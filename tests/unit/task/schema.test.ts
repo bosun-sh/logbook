@@ -80,4 +80,25 @@ describe("TaskSchema", () => {
       })
     ).toThrow()
   })
+
+  test("keeps legacy empty comments and broader stored estimates readable", () => {
+    for (const predictedKTokens of [0, 0.5, 128]) {
+      const legacy: z.input<typeof TaskSchema> = {
+        ...taskRecord,
+        status: "blocked",
+        estimate: { ...taskRecord.estimate, predictedKTokens },
+        comments: [
+          {
+            id: "legacy-comment",
+            title: "Old blocker",
+            content: "",
+            kind: "regular",
+            createdAt: taskRecord.createdAt,
+            replies: [],
+          },
+        ],
+      }
+      expect(TaskSchema.parse(legacy)).toEqual(legacy)
+    }
+  })
 })

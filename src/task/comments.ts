@@ -79,6 +79,10 @@ export const validatePriority = (priority: number): ToolResult<never> | null => 
 }
 
 export const validateCommentContent = (content: string): ToolResult<never> | null => {
+  if (typeof content !== "string") {
+    return error("validation_error", "comment content must be a string")
+  }
+
   const bytes = textEncoder.encode(content).length
   if (bytes > MAX_COMMENT_CONTENT_BYTES) {
     return error("validation_error", `comment content exceeds ${MAX_COMMENT_CONTENT_BYTES} bytes`, {

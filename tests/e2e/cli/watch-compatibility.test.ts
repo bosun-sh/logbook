@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { ToolResult } from "@logbook/shared/result.js"
@@ -8,8 +8,8 @@ import { type CreateMcpServerOptions, createMcpServer } from "@logbook/workspace
 
 const entry = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
 
-// Characterize 2.1.0; docs/watch-compatibility.md specifies the successor's target outcomes.
-describe("Watch public compatibility at eb8d3ba", () => {
+// T02 lifecycle/estimate assertions; hierarchy/retry cases retain the T01 characterization.
+describe("Watch public compatibility", () => {
   let workspaceRoot: string
 
   const call = async (command: string, input: Record<string, unknown> = {}) => {
@@ -73,130 +73,330 @@ describe("Watch public compatibility at eb8d3ba", () => {
     await rm(workspaceRoot, { recursive: true, force: true })
   })
 
-  test("L1: backlog, todo and pending_review cannot block directly; target persists blocked", async () => {
-    const { task } = await createTask()
-    for (const status of ["backlog", "todo", "in_progress", "pending_review"]) {
-      if (status !== "backlog") {
-        await succeed("task:update", { id: task.id, newStatus: status })
-      }
-      if (status === "in_progress") continue
-      const before = await tasksFile()
-      expect(
-        await call("task:update", {
+  test("L1: CLI and MCP block/resume backlog, todo and review without fake execution", async () => {
+    const { task: unrelated } = await createTask({ title: "Unrelated task" })
+    for (const surface of ["cli", "mcp"] as const) {
+      const { task } = await createTask()
+      for (const status of ["backlog", "todo", "pending_review"] as const) {
+        if (status === "todo") {
+          await succeed("task:update", { id: task.id, newStatus: "todo" })
+        } else if (status === "pending_review") {
+          await succeed("task:update", { id: task.id, newStatus: "in_progress" })
+          await succeed("task:update", { id: task.id, newStatus: "pending_review" })
+        }
+        const input = {
           id: task.id,
           newStatus: "blocked",
-          comment: { content: "Required prerequisite is unavailable", kind: "regular" },
-        })
-      ).toMatchObject({
-        ok: false,
-        error: { code: "invalid_transition", details: { from: status, to: "blocked" } },
-      })
-      expect(await tasksFile()).toBe(before)
-      expect((await succeed("task:get", { id: task.id })).task.status).toBe(status)
+          comment: {
+            content: `${surface}: prerequisite unavailable at ${status}`,
+            kind: "regular",
+          },
+        }
+        const blocked =
+          surface === "cli" ? await call("task:update", input) : await callMcp("task.update", input)
+        expect(blocked).toMatchObject({ ok: true, data: { task: { status: "blocked" } } })
+        const persisted = (await succeed("task:get", { id: task.id })).task
+        expect(persisted.inProgressSince).toBeUndefined()
+        expect(persisted.comments.at(-1).content).toBe(input.comment.content)
+        const resumeInput = { id: task.id, newStatus: status }
+        expect(
+          surface === "cli"
+            ? await call("task:update", resumeInput)
+            : await callMcp("task.update", resumeInput)
+        ).toMatchObject({ ok: true, data: { task: { status } } })
+        const resumed = (await succeed("task:get", { id: task.id })).task
+        expect(resumed.inProgressSince).toBeUndefined()
+        expect(resumed.comments).toEqual(persisted.comments)
+      }
     }
-  }, 20_000)
+    expect((await succeed("task:get", { id: unrelated.id })).task).toEqual(unrelated)
+  }, 30_000)
 
-  test("L2: real execution can block with a reason; invalid reasons preserve storage", async () => {
+  test("L2/L4: both public paths reject invalid blocker evidence without changing storage", async () => {
     const { task } = await createTask()
-    await succeed("task:update", { id: task.id, newStatus: "todo" })
-    await succeed("task:update", { id: task.id, newStatus: "in_progress" })
     const before = await tasksFile()
-    for (const comment of [undefined, { content: "x".repeat(65_537), kind: "regular" }]) {
-      expect(
-        await call("task:update", { id: task.id, newStatus: "blocked", comment })
-      ).toMatchObject({
+    for (const comment of [
+      undefined,
+      null,
+      "Reason",
+      { content: "", kind: "regular" },
+      { content: "é".repeat(32_769), kind: "regular" },
+      { content: "Reason", kind: "sync" },
+      { content: "Reason", kind: "review" },
+      { content: 123, kind: "regular" },
+      { kind: "regular" },
+    ]) {
+      const input = { id: task.id, newStatus: "blocked", comment }
+      expect(await call("task:update", input)).toMatchObject({
         ok: false,
         error: { code: "validation_error" },
       })
       expect(await tasksFile()).toBe(before)
+      expect((await callMcp("task.update", input)).ok).toBe(false)
+      expect(await tasksFile()).toBe(before)
+    }
+    const boundary = "é".repeat(32_768)
+    await succeed("task:update", {
+      id: task.id,
+      newStatus: "blocked",
+      comment: { content: boundary, kind: "need_info" },
+    })
+    const { task: blocked } = await succeed("task:get", { id: task.id })
+    expect(blocked.comments[0].content).toBe(boundary)
+    expect(
+      await callMcp("task.update", {
+        id: task.id,
+        newStatus: "blocked",
+        comment: { content: boundary, kind: "regular" },
+      })
+    ).toMatchObject({ ok: true })
+    const after = await tasksFile()
+    expect(
+      await call("task:update", {
+        id: task.id,
+        newStatus: "blocked",
+        comment: { content: "", kind: "regular" },
+      })
+    ).toMatchObject({ ok: false, error: { code: "validation_error" } })
+    expect(await tasksFile()).toBe(after)
+    await succeed("task:update", { id: task.id, newStatus: "in_progress" })
+    const running = await tasksFile()
+    expect(
+      await call("task:update", {
+        id: task.id,
+        newStatus: "need_info",
+        comment: { content: "Missing details", kind: "regular" },
+      })
+    ).toMatchObject({ ok: false, error: { code: "validation_error" } })
+    expect(await tasksFile()).toBe(running)
+    await succeed("task:update", {
+      id: task.id,
+      newStatus: "need_info",
+      comment: { content: "Missing details", kind: "need_info" },
+    })
+  }, 30_000)
+
+  test("L3: malformed same-status comments retain validation errors through CLI and MCP", async () => {
+    const { task } = await createTask()
+    await createTask({ title: "Unrelated task" })
+    const before = await tasksFile()
+    for (const comment of [
+      { content: "Evidence", title: 123 },
+      { content: "Evidence", kind: "invalid" },
+    ]) {
+      const input = { id: task.id, newStatus: "backlog", comment }
+      expect(await call("task:update", input)).toMatchObject({
+        ok: false,
+        error: {
+          code: "validation_error",
+          details: { filePath: join(workspaceRoot, ".logbook/storage/tasks.jsonl") },
+        },
+      })
+      expect(await tasksFile()).toBe(before)
+      expect(await callMcp("task.update", input)).toMatchObject({
+        ok: false,
+        error: { code: "schema_validation_error" },
+      })
+      expect(await tasksFile()).toBe(before)
+    }
+  })
+
+  test("L/E: real write failures retain storage errors through CLI and MCP", async () => {
+    const { task } = await createTask()
+    await createTask({ title: "Unrelated task" })
+    const before = await tasksFile()
+    const storage = join(workspaceRoot, ".logbook/storage")
+    await chmod(storage, 0o555)
+    try {
+      for (const [command, input] of [
+        [
+          "task:update",
+          { id: task.id, newStatus: "blocked", comment: { content: "Valid blocker" } },
+        ],
+        ["task:estimate", { id: task.id, predictedKTokens: 128, complexity: "large" }],
+      ] as const) {
+        for (const surface of ["cli", "mcp"] as const) {
+          const result =
+            surface === "cli"
+              ? await call(command, input)
+              : await callMcp(command.replace(":", "."), input)
+          expect(result).toMatchObject({
+            ok: false,
+            error: {
+              code: "storage_error",
+              message: "Atomic rewrite temp suffix attempts exhausted",
+              details: { filePath: join(storage, "tasks.jsonl"), operation: "write" },
+            },
+          })
+          expect(await tasksFile()).toBe(before)
+          expect((await succeed("task:get", { id: task.id })).task).toEqual(task)
+        }
+      }
+    } finally {
+      await chmod(storage, 0o755)
+    }
+  }, 15_000)
+
+  test("L3: same-status evidence persists while no-comment calls remain no-ops", async () => {
+    const { task } = await createTask()
+    await succeed("task:update", { id: task.id, newStatus: "todo" })
+    const { task: running } = await succeed("task:update", {
+      id: task.id,
+      newStatus: "in_progress",
+    })
+    const before = await tasksFile()
+    await succeed("task:update", { id: task.id, newStatus: "in_progress" })
+    expect(await tasksFile()).toBe(before)
+    for (const surface of ["cli", "mcp"] as const) {
+      const input = {
+        id: task.id,
+        newStatus: "in_progress",
+        comment: { content: `${surface}: new attempt evidence`, kind: "regular" },
+      }
+      expect(
+        surface === "cli" ? await call("task:update", input) : await callMcp("task.update", input)
+      ).toMatchObject({ ok: true })
+    }
+    const { task: persisted } = await succeed("task:get", { id: task.id })
+    expect(persisted.comments.map((comment: { content: string }) => comment.content)).toEqual([
+      "cli: new attempt evidence",
+      "mcp: new attempt evidence",
+    ])
+    expect(persisted.inProgressSince).toBe(running.inProgressSince)
+    expect(persisted.phaseModelOverrides).toEqual(running.phaseModelOverrides)
+    const after = await tasksFile()
+    for (const surface of ["cli", "mcp"] as const) {
+      const input = {
+        id: task.id,
+        newStatus: "in_progress",
+        comment: { content: "Reply", replyToCommentId: "missing-comment" },
+      }
+      expect(
+        surface === "cli" ? await call("task:update", input) : await callMcp("task.update", input)
+      ).toMatchObject({ ok: false, error: { code: "not_found" } })
+      expect(await tasksFile()).toBe(after)
+    }
+  }, 20_000)
+
+  test("L5: forbidden transitions and missing tasks retain structured errors", async () => {
+    const { task } = await createTask()
+    const before = await tasksFile()
+    for (const to of ["in_progress", "done", "pending_review"]) {
+      expect(await call("task:update", { id: task.id, newStatus: to })).toMatchObject({
+        ok: false,
+        error: { code: "invalid_transition", details: { from: "backlog", to } },
+      })
+      expect(await tasksFile()).toBe(before)
+    }
+    for (const [command, input] of [
+      ["task:update", { id: "missing-task", newStatus: "blocked" }],
+      ["task:estimate", { id: "missing-task", predictedKTokens: 128, complexity: "large" }],
+    ] as const) {
+      expect(await call(command, input)).toMatchObject({
+        ok: false,
+        error: { code: "not_found" },
+      })
+      expect(await callMcp(command.replace(":", "."), input)).toMatchObject({
+        ok: false,
+        error: { code: "not_found" },
+      })
+      expect(await tasksFile()).toBe(before)
+    }
+  }, 15_000)
+
+  test("E1: CLI and MCP preserve 64/65/128 exactly and leave parents/unrelated tasks unchanged", async () => {
+    const { epic } = await succeed("epic:create", {
+      title: "Estimate epic",
+      description: "Fixture",
+      outcome: "Preserve hierarchy",
+    })
+    const { story } = await succeed("story:create", {
+      epicId: epic.id,
+      title: "Estimate story",
+      description: "Fixture",
+      userValue: "Durable estimates",
+    })
+    const { task } = await createTask({ storyId: story.id })
+    const { task: unrelated } = await createTask({ title: "Unrelated estimate" })
+    const parentFiles = await Promise.all(
+      ["epics", "stories"].map((name) =>
+        readFile(join(workspaceRoot, `.logbook/storage/${name}.jsonl`), "utf8")
+      )
+    )
+    for (const surface of ["cli", "mcp"] as const) {
+      for (const predictedKTokens of [64, 65, 128]) {
+        const input = { id: task.id, predictedKTokens, complexity: "large", confidence: "high" }
+        expect(
+          surface === "cli"
+            ? await call("task:estimate", input)
+            : await callMcp("task.estimate", input)
+        ).toMatchObject({ ok: true, data: { estimate: { predictedKTokens, fibonacci: 21 } } })
+        expect((await succeed("task:get", { id: task.id })).task.estimate).toEqual({
+          predictedKTokens,
+          complexity: "large",
+          confidence: "high",
+          fibonacci: 21,
+        })
+      }
     }
     await succeed("task:update", {
       id: task.id,
       newStatus: "blocked",
-      comment: { content: "Missing required service", kind: "regular" },
+      comment: { content: "Hierarchy stays linked" },
     })
-    const blocked = (await succeed("task:get", { id: task.id })).task
-    expect(blocked.status).toBe("blocked")
-    expect(blocked.inProgressSince).toBeUndefined()
-    expect(blocked.comments).toHaveLength(1)
-    expect(blocked.comments[0].content).toBe("Missing required service")
-    expect(await call("task:update", { id: task.id, newStatus: "todo" })).toMatchObject({
-      ok: false,
-      error: { code: "invalid_transition" },
-    })
-    await succeed("task:update", { id: task.id, newStatus: "in_progress" })
-  }, 20_000)
+    expect((await succeed("task:get", { id: unrelated.id })).task).toEqual(unrelated)
+    expect(
+      await Promise.all(
+        ["epics", "stories"].map((name) =>
+          readFile(join(workspaceRoot, `.logbook/storage/${name}.jsonl`), "utf8")
+        )
+      )
+    ).toEqual(parentFiles)
+    const { task: persisted } = await succeed("task:get", { id: task.id })
+    expect(persisted).toMatchObject({ epicId: epic.id, storyId: story.id })
+  }, 25_000)
 
-  test("L4: MCP rejects empty blocker evidence but the current CLI accepts it", async () => {
-    const { task } = await createTask()
-    await succeed("task:update", { id: task.id, newStatus: "todo" })
-    await succeed("task:update", { id: task.id, newStatus: "in_progress" })
-    const input = { id: task.id, newStatus: "blocked", comment: { content: "", kind: "regular" } }
-    const before = await tasksFile()
-    expect(await callMcp("task.update", input)).toMatchObject({
-      ok: false,
-      error: { code: "schema_validation_error" },
-    })
-    expect(await tasksFile()).toBe(before)
-    const { task: blocked } = await succeed("task:update", input)
-    expect(blocked.status).toBe("blocked")
-    expect(blocked.comments[0].content).toBe("")
-  }, 15_000)
-
-  test("L3: same-status comments are discarded; target appends evidence without a transition", async () => {
-    const { task } = await createTask()
-    const before = await tasksFile()
-    const { task: unchanged } = await succeed("task:update", {
-      id: task.id,
-      newStatus: "backlog",
-      comment: { content: "New attempt evidence", kind: "regular" },
-    })
-    expect(unchanged.comments).toEqual([])
-    expect(await tasksFile()).toBe(before)
-    expect((await succeed("task:get", { id: task.id })).task.comments).toEqual([])
-  }, 15_000)
-
-  test("E1: estimate command rejects 65/128 although edit and storage accept 128", async () => {
-    const { task } = await createTask()
-    await succeed("task:estimate", { id: task.id, predictedKTokens: 64, complexity: "large" })
-    for (const predictedKTokens of [65, 128]) {
-      const before = await tasksFile()
-      expect(
-        await call("task:estimate", { id: task.id, predictedKTokens, complexity: "large" })
-      ).toMatchObject({
-        ok: false,
-        error: { code: "validation_error", details: { maxPredictedKTokens: 64 } },
-      })
-      expect(await tasksFile()).toBe(before)
-    }
-    const estimate = {
-      predictedKTokens: 128,
-      complexity: "large",
-      fibonacci: 21,
-      confidence: "high",
-    }
-    await succeed("task:edit", { id: task.id, estimate })
-    expect((await succeed("task:get", { id: task.id })).task.estimate).toEqual(estimate)
-  }, 20_000)
-
-  test("E2: command validation and zero default are distinct from Scrum effort", async () => {
+  test("E2: command validation stays distinct from nested estimates and Scrum effort", async () => {
     const { task } = await createTask()
     expect(task.estimate.predictedKTokens).toBe(0)
     const before = await tasksFile()
-    for (const predictedKTokens of [0, -1, 1.5]) {
-      expect(
-        await call("task:estimate", { id: task.id, predictedKTokens, complexity: "small" })
-      ).toMatchObject({ ok: false, error: { code: "validation_error" } })
+    for (const invalid of [
+      { predictedKTokens: 0 },
+      { predictedKTokens: -1 },
+      { predictedKTokens: 1.5 },
+      { predictedKTokens: "128" },
+      { predictedKTokens: null },
+      { complexity: "unknown" },
+      { confidence: "urgent" },
+      { rationale: "é".repeat(2049) },
+    ]) {
+      const input = { id: task.id, predictedKTokens: 128, complexity: "large", ...invalid }
+      expect(await call("task:estimate", input)).toMatchObject({
+        ok: false,
+        error: { code: "validation_error" },
+      })
+      expect(await tasksFile()).toBe(before)
+      expect((await callMcp("task.estimate", input)).ok).toBe(false)
       expect(await tasksFile()).toBe(before)
     }
     const { estimate } = await succeed("task:estimate", {
-      predictedKTokens: 13,
-      complexity: "small",
+      predictedKTokens: 128,
+      complexity: "large",
+      rationale: "é".repeat(2048),
     })
-    expect(estimate).toMatchObject({ predictedKTokens: 13, fibonacci: 13 })
+    expect(estimate).toMatchObject({ predictedKTokens: 128, fibonacci: 21 })
     expect(task).not.toHaveProperty("storyPoints")
     expect(estimate).not.toHaveProperty("storyPoints")
-  }, 15_000)
+    for (const predictedKTokens of [0, 0.5, 128]) {
+      const nested = { predictedKTokens, complexity: "small", confidence: "low", fibonacci: 1 }
+      const { task: created } = await createTask({ estimate: nested })
+      expect((await succeed("task:get", { id: created.id })).task.estimate).toEqual(nested)
+      expect(await callMcp("task.edit", { id: task.id, estimate: nested })).toMatchObject({
+        ok: true,
+      })
+      expect((await succeed("task:get", { id: task.id })).task.estimate).toEqual(nested)
+    }
+  }, 30_000)
 
   test("H1: public creates persist reciprocal hierarchy and reject a mismatched epic", async () => {
     const { epic } = await succeed("epic:create", {

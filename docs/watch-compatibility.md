@@ -4,8 +4,10 @@ This is the bounded contract for WATCH-S02-T01 (contract v2, SHA-256
 `4fec7d993a898b56d5be8108d12b1451e051e819940d8bf5328f8844f32b6c07`).
 It characterizes Logbook 2.1.0 at
 `eb8d3ba5e2202e140098f9e63ee1e97a7a49cb96` and specifies required successor
-behavior for WATCH-S02-T02/T03. **The target behavior is not implemented by this
-document or its tests.** No package release or Watch integration is qualified.
+behavior for WATCH-S02-T02/T03. The T02 source candidate now implements the bounded
+lifecycle and estimate changes below; independent acceptance and a public release
+remain separate gates. T03 mutation identity/recovery remains unimplemented.
+No package release or Watch integration is qualified.
 
 Logbook remains canonical for entities, hierarchy, content, context and lifecycle.
 Watch's runtime database references Logbook IDs and holds scheduling, blocker,
@@ -14,7 +16,7 @@ go through one Watch-owned Logbook writer. Competing hooks, Linear sync and dire
 worker/CLI/MCP writers must remain disabled. The current file lock is an in-process
 promise map, not cross-process exclusion (`src/shared/storage/transaction.ts`).
 
-## Reproduce the current behavior
+## Reproduce the compatibility checks
 
 ```sh
 bun install --frozen-lockfile
@@ -23,8 +25,9 @@ bun test tests/unit/task/lifecycle-transitions-v2.test.ts tests/unit/task/task-e
 bun run ci:lint
 ```
 
-The compatibility tests are green **characterizations**, not expected failures,
-skipped acceptance tests or a simulation of target behavior. Each CLI call starts
+The lifecycle/estimate (L/E) tests assert the T02 target behavior. The hierarchy
+and retry (H/I) tests retain the T01 characterizations; passing them does not
+qualify T03. The table below preserves the original observations. Each CLI call starts
 a fresh process against a disposable real `.logbook/storage` workspace. MCP calls
 use the real workspace layer. Tests read canonical JSONL to detect rejected-write
 side effects; they never patch task records or touch the operator's board. Public
@@ -51,6 +54,14 @@ Thus an unrecognized CLI property is not evidence of feature support. Public
 compatibility must be tested through both surfaces.
 
 ## T02: lifecycle and estimates
+
+The source candidate adds the six required block/resume edges, persists validated
+same-status comments without resetting phase/progress fields, and rejects empty
+new blocker content through CLI and MCP. Existing stored empty comments remain
+readable. The estimate command preserves predictions above 64 while retaining its
+finite positive integer and other validation; nested create/edit estimates and
+stored defaults keep their broader existing semantics. No storage format changes
+or migration are needed. Retry deduplication still belongs to T03.
 
 The domain transition table is in `src/task/lifecycle.ts`. At the pinned base:
 
