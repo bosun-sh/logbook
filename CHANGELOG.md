@@ -8,6 +8,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.2.0] - 2026-10-18
+
+### Added
+
+- Optional workspace-scoped `operationId` on epic/story/task creation, task edits, lifecycle updates and persisted estimates, with public `operation.get` lookup and durable applied/replayed receipts.
+- Durable intent recovery preserves generated IDs, results and hierarchy links after interrupted identified mutations; conflicting identity reuse and uncertain writes fail explicitly.
+
+### Changed
+
+- Tasks can block and resume from backlog, todo and pending review with validated blocker evidence; same-status comments append without a fake lifecycle transition.
+- Persist exact valid task estimates above 64 kilotokens without changing the existing nested estimate schema or conflating token estimates with story points.
+
+### Fixed
+
+- Preserve canonical validation and storage errors through public task updates instead of reporting existing tasks as missing.
+
+### Upgrade and rollback
+
+- Entity JSONL schemas and paths are unchanged; the operation journal initializes on the first identified call with format version 1 and rejects unsupported versions.
+- Stop all writers before upgrade or restoration. Back up the entire `.logbook` directory, including the journal and WAL, with its matching package. Prior package 2.1.0 does not participate in operation identity: keep old writers stopped and restore a consistent pre-upgrade backup before returning to its workflow. See the [operation identity contract](https://github.com/bosun-sh/logbook/blob/v2.2.0/docs/watch-operation-identity.md) for recovery limits and procedures.
+
+---
+
 ## [2.1.0] - 2026-06-28
 
 ---
@@ -177,7 +200,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Requires Bun ≥ 1.0.0
 - Two production dependencies: `effect`, `zod`
 
-[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/bosun-sh/logbook/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/bosun-sh/logbook/compare/v2.0.3...v2.1.0
 [2.0.3]: https://github.com/bosun-sh/logbook/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/bosun-sh/logbook/compare/v2.0.1...v2.0.2
