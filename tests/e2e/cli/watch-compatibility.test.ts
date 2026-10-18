@@ -8,7 +8,7 @@ import { type CreateMcpServerOptions, createMcpServer } from "@logbook/workspace
 
 const entry = join(import.meta.dir, "../../../src/workspace/bin-cli.ts")
 
-// T02 lifecycle/estimate assertions; hierarchy/retry cases retain the T01 characterization.
+// Public T02 lifecycle/estimate and T03 identity contracts; all workspaces are disposable.
 describe("Watch public compatibility", () => {
   let workspaceRoot: string
 
@@ -440,33 +440,33 @@ describe("Watch public compatibility", () => {
     expect((await succeed("story:get", { id: story.id })).story.taskIds).toEqual([task.id])
   }, 20_000)
 
-  test("I1: CLI ignores operationId across restarts; MCP rejects it, target replays/conflicts", async () => {
-    const operationId = "watch:create:1"
-    const { task: first } = await createTask({ operationId })
-    const { task: duplicate } = await createTask({ operationId })
-    expect(first.id).not.toBe(duplicate.id)
-    const { task: conflictingReuse } = await createTask({ operationId, title: "Different request" })
-    expect(conflictingReuse.id).not.toBe(first.id)
+  test("I1: CLI and MCP replay identities across restarts and reject conflicting reuse", async () => {
+    const input = {
+      title: "Watch compatibility task",
+      description: "Disposable public API fixture",
+      definitionOfDone: "Compatibility is explicit",
+      project: "watch",
+      milestone: "S02",
+      operationId: "watch:create:1",
+    }
+    const first = await succeed("task:create", input)
+    const duplicate = await succeed("task:create", input)
+    expect(duplicate.task).toEqual(first.task)
+    expect(first.receipt.outcome).toBe("applied")
+    expect(duplicate.receipt.outcome).toBe("replayed")
     const before = await tasksFile()
-    expect(
-      await callMcp("task.create", {
-        title: "Watch compatibility task",
-        description: "Disposable public API fixture",
-        definitionOfDone: "Compatibility is explicit",
-        project: "watch",
-        milestone: "S02",
-        operationId,
-      })
-    ).toMatchObject({ ok: false, error: { code: "schema_validation_error" } })
+    expect(await call("task:create", { ...input, title: "Different request" })).toMatchObject({
+      ok: false,
+      error: { code: "operation_conflict" },
+    })
+    expect(await callMcp("task.create", input)).toMatchObject({ ok: true, data: duplicate })
     expect(await tasksFile()).toBe(before)
     const { items } = await succeed("task:list", { status: "*" })
-    expect(items.map((item: { id: string }) => item.id).sort()).toEqual(
-      [first.id, duplicate.id, conflictingReuse.id].sort()
-    )
-    expect(first).not.toHaveProperty("operationId")
+    expect(items.map((item: { id: string }) => item.id)).toEqual([first.task.id])
+    expect(first.task).not.toHaveProperty("operationId")
   }, 15_000)
 
-  test("I2: retrying a reply after a process exit duplicates its effect", async () => {
+  test("I2: retrying a reply after a process exit preserves one effect", async () => {
     const { task } = await createTask()
     const { task: commented } = await succeed("task:update", {
       id: task.id,
@@ -483,10 +483,8 @@ describe("Watch public compatibility", () => {
     await succeed("task:update", input)
     const { task: persisted } = await succeed("task:get", { id: task.id })
     const replies = persisted.comments[0].replies
-    expect(replies).toHaveLength(2)
-    expect(replies[0].id).not.toBe(replies[1].id)
+    expect(replies).toHaveLength(1)
     expect(replies.map((reply: { content: string }) => reply.content)).toEqual([
-      "Reviewer evidence",
       "Reviewer evidence",
     ])
   }, 15_000)

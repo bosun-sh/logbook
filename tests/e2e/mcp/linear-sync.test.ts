@@ -7,6 +7,7 @@ import { LinearTransport } from "@logbook/sync/linear/transport.js"
 import type { SyncConflict, SyncEvent } from "@logbook/sync/schema.js"
 import type { Task } from "@logbook/task/schema.js"
 import { type CreateMcpServerOptions, createMcpServer } from "@logbook/workspace/mcp-server.js"
+import { OperationWorkspace } from "@logbook/workspace/operations.js"
 import { Context, Effect, Layer } from "effect"
 
 type TaskRepositoryShape = {
@@ -358,6 +359,31 @@ describe("Linear MCP sync tools", () => {
         conflicts: 0,
       },
     })
+  })
+
+  test("operation lookup stays read-only even when automatic Linear sync is configured", async () => {
+    const root = await makeWorkspace()
+    let requests = 0
+    linearClient = {
+      request: () => {
+        requests += 1
+        return Effect.die("Unexpected sync")
+      },
+    }
+    const server = createMcpServer({
+      workspaceRoot: root,
+      layer: Layer.merge(
+        layer(),
+        Layer.succeed(OperationWorkspace, { root })
+      ) as unknown as CreateMcpServerOptions["layer"],
+    })
+    const response = await server.callTool({
+      name: "operation.get",
+      arguments: { operationId: "absent" },
+    })
+    expect(parseEnvelope(response)).toEqual({ ok: true, data: { state: "absent" } })
+    expect(requests).toBe(0)
+    expect(eventRepo.records).toHaveLength(0)
   })
 
   test("automatically pulls Linear before a task read", async () => {

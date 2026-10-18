@@ -22,6 +22,7 @@ const EXPECTED_TOOL_IDS = [
   "epic.update",
   "hook.list",
   "hook.run",
+  "operation.get",
   "plugin.list",
   "story.create",
   "story.delete",
@@ -52,6 +53,7 @@ const EXPECTED_PLUGIN_NAMES = [
   "context",
   "epic",
   "hook",
+  "operation",
   "plugin",
   "story",
   "sync",
@@ -73,13 +75,14 @@ describe("logbook ohtools registry", () => {
       "context",
       "epic",
       "hook",
+      "operation",
       "plugin",
       "story",
       "sync",
       "task",
       "workspace",
     ])
-    expect(toolIds).toHaveLength(39)
+    expect(toolIds).toHaveLength(40)
     expect(toolIds.every((id) => LOWERCASE_DOTTED_ID.test(id))).toBe(true)
     expect(toolIds.filter((id) => id.startsWith("workspace."))).toEqual([
       "workspace.init",
@@ -178,6 +181,14 @@ describe("logbook ohtools registry", () => {
             enabled: true,
             groups: ["hook"],
             toolIds: ["hook.list", "hook.run"],
+          },
+          {
+            id: "operation",
+            name: "operation",
+            version: LOGBOOK_VERSION,
+            enabled: true,
+            groups: ["operation"],
+            toolIds: ["operation.get"],
           },
           {
             id: "plugin",

@@ -6,7 +6,8 @@ It characterizes Logbook 2.1.0 at
 `eb8d3ba5e2202e140098f9e63ee1e97a7a49cb96` and specifies required successor
 behavior for WATCH-S02-T02/T03. The T02 source candidate now implements the bounded
 lifecycle and estimate changes below; independent acceptance and a public release
-remain separate gates. T03 mutation identity/recovery remains unimplemented.
+remain separate gates. The T03 source candidate implements mutation identity/recovery;
+see [its public behavior and recovery boundaries](watch-operation-identity.md).
 No package release or Watch integration is qualified.
 
 Logbook remains canonical for entities, hierarchy, content, context and lifecycle.
@@ -25,9 +26,9 @@ bun test tests/unit/task/lifecycle-transitions-v2.test.ts tests/unit/task/task-e
 bun run ci:lint
 ```
 
-The lifecycle/estimate (L/E) tests assert the T02 target behavior. The hierarchy
-and retry (H/I) tests retain the T01 characterizations; passing them does not
-qualify T03. The table below preserves the original observations. Each CLI call starts
+The lifecycle/estimate (L/E) tests assert the T02 target behavior. Hierarchy (H)
+retains its T01 characterization; retry (I) now asserts T03 replay/conflict
+behavior. The separate operation-identity suite exercises crash boundaries. The table below preserves the original observations. Each CLI call starts
 a fresh process against a disposable real `.logbook/storage` workspace. MCP calls
 use the real workspace layer. Tests read canonical JSONL to detect rejected-write
 side effects; they never patch task records or touch the operator's board. Public
@@ -61,7 +62,7 @@ new blocker content through CLI and MCP. Existing stored empty comments remain
 readable. The estimate command preserves predictions above 64 while retaining its
 finite positive integer and other validation; nested create/edit estimates and
 stored defaults keep their broader existing semantics. No storage format changes
-or migration are needed. Retry deduplication still belongs to T03.
+or migration are needed. Retry deduplication is supplied by the T03 candidate; no-ID behavior stays unchanged.
 
 The domain transition table is in `src/task/lifecycle.ts`. At the pinned base:
 

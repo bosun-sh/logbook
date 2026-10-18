@@ -38,10 +38,8 @@ export class TaskRepository extends JsonlRepository<Task> {
 class TaskRepositoryPortAdapter implements TaskRepositoryPort {
   constructor(private readonly store: JsonlRepository<Task>) {}
 
-  findById(
-    id: string
-  ): Effect.Effect<Task, { readonly _tag: "not_found"; readonly taskId: string }> {
-    return Effect.mapError(this.store.get(id), () => ({ _tag: "not_found" as const, taskId: id }))
+  findById(id: string): Effect.Effect<Task, TaskRepositoryError> {
+    return Effect.mapError(this.store.get(id), (cause) => ({ ...cause, taskId: id }))
   }
 
   findByStatus(status: TaskStatus | "*"): Effect.Effect<readonly Task[], never> {
@@ -51,9 +49,9 @@ class TaskRepositoryPortAdapter implements TaskRepositoryPort {
     )
   }
 
-  save(task: Task): Effect.Effect<void, { readonly _tag: "conflict"; readonly taskId: string }> {
+  save(task: Task): Effect.Effect<void, TaskRepositoryError> {
     return Effect.mapBoth(this.store.create(task), {
-      onFailure: () => ({ _tag: "conflict" as const, taskId: task.id }),
+      onFailure: (cause) => ({ ...cause, taskId: task.id }),
       onSuccess: () => undefined,
     })
   }

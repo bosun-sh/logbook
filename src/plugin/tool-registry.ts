@@ -35,6 +35,7 @@ import { listTasks } from "@logbook/task/list.js"
 import { assignTaskModel, assignTaskPhaseModel } from "@logbook/task/model-assignment.js"
 import { assignTaskSession } from "@logbook/task/session-assignment.js"
 import { updateTaskStatus } from "@logbook/task/update.js"
+import { getOperation, withOperationIdentity } from "@logbook/workspace/operations.js"
 import { hookListTool, hookRunTool } from "./hook-tools.js"
 import { linearPullTool } from "./linear-pull-tool.js"
 import { linearPushTool } from "./linear-push-tool.js"
@@ -90,19 +91,25 @@ const staticTool = <Id extends string>(
     run: (input) => run(input),
   }) as unknown as AnyDefinedTool
 
-const epicCreateTool = staticTool("epic.create", "Create an epic record.", createEpic)
+const epicCreateTool = staticTool("epic.create", "Create an epic record.", (input) =>
+  withOperationIdentity("epic.create", input, createEpic)
+)
 const epicGetTool = staticTool("epic.get", "Load one epic by id.", getEpic)
 const epicListTool = staticTool("epic.list", "List epics with current filters.", listEpics)
 const epicUpdateTool = staticTool("epic.update", "Update one epic.", updateEpic)
 const epicDeleteTool = staticTool("epic.delete", "Delete or tombstone one epic.", deleteEpic)
 
-const storyCreateTool = staticTool("story.create", "Create a story within an epic.", createStory)
+const storyCreateTool = staticTool("story.create", "Create a story within an epic.", (input) =>
+  withOperationIdentity("story.create", input, createStory)
+)
 const storyGetTool = staticTool("story.get", "Load one story by id.", getStory)
 const storyListTool = staticTool("story.list", "List stories with current filters.", listStories)
 const storyUpdateTool = staticTool("story.update", "Update one story.", updateStory)
 const storyDeleteTool = staticTool("story.delete", "Delete or tombstone one story.", deleteStory)
 
-const taskCreateTool = staticTool("task.create", "Create one task record.", createTask)
+const taskCreateTool = staticTool("task.create", "Create one task record.", (input) =>
+  withOperationIdentity("task.create", input, createTask)
+)
 const taskGetTool = staticTool("task.get", "Load one task by id.", getTask)
 const taskListTool = staticTool("task.list", "List tasks with current filters.", listTasks)
 const taskCurrentTool = staticTool(
@@ -110,8 +117,12 @@ const taskCurrentTool = staticTool(
   "Resolve the current task for a session.",
   getCurrentTask
 )
-const taskUpdateTool = staticTool("task.update", "Update one task status.", updateTaskStatus)
-const taskEditTool = staticTool("task.edit", "Edit one task record.", editTask)
+const taskUpdateTool = staticTool("task.update", "Update one task status.", (input) =>
+  withOperationIdentity("task.update", input, updateTaskStatus)
+)
+const taskEditTool = staticTool("task.edit", "Edit one task record.", (input) =>
+  withOperationIdentity("task.edit", input, editTask)
+)
 const taskAssignSessionTool = staticTool(
   "task.assign.session",
   "Assign a session to one task.",
@@ -127,10 +138,8 @@ const taskAssignPhaseModelTool = staticTool(
   "Assign a phase-specific model to one task.",
   assignTaskPhaseModel
 )
-const taskEstimateTool = staticTool(
-  "task.estimate",
-  "Create or update a task estimate.",
-  estimateTask
+const taskEstimateTool = staticTool("task.estimate", "Create or update a task estimate.", (input) =>
+  withOperationIdentity("task.estimate", input, estimateTask)
 )
 
 const contextCreateTool = staticTool(
@@ -215,6 +224,13 @@ const defaultPluginDefinitions: readonly StaticPluginDefinition[] = [
     epicUpdateTool,
   ]),
   createPluginDefinition("hook", "Hook tools.", hookTools),
+  createPluginDefinition("operation", "Durable mutation acknowledgments.", [
+    staticTool(
+      "operation.get",
+      "Look up a durable mutation acknowledgment without applying pending writes.",
+      getOperation
+    ),
+  ]),
   createPluginDefinition("plugin", "Plugin registry tools.", [pluginListTool]),
   createPluginDefinition("story", "Story tools.", [
     storyCreateTool,
