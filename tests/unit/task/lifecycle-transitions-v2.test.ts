@@ -105,14 +105,14 @@ describe("transitionTaskStatus", () => {
     }
   })
 
-  test("returns the existing task for no-op transitions without appending comments", () => {
+  test("returns the existing task for same-status calls without a comment", () => {
     const task = makeTask({ status: "in_progress", inProgressSince: NOW })
     const result = transitionTaskStatus(task, "in_progress", {
       now: "2026-01-03T00:00:00.000Z",
-      comment: makeComment(),
     })
 
     expect(result).toEqual({ ok: true, data: task })
+    if (result.ok) expect(result.data).toBe(task)
   })
 
   test("rejects forbidden transitions with invalid_transition", () => {
@@ -161,14 +161,84 @@ describe("transitionTaskStatus", () => {
     }
   })
 
-  test("ignores comments on no-op transitions", () => {
-    const task = makeTask({ status: "in_progress", inProgressSince: NOW })
+  test("appends same-status evidence without resetting progress or phase fields", () => {
+    const task = makeTask({
+      status: "in_progress",
+      inProgressSince: NOW,
+      currentPhase: "dev",
+      phaseModelOverrides: { dev: { id: "test-model" } },
+      comments: [makeComment({ id: "previous-comment" })],
+    })
     const result = transitionTaskStatus(task, "in_progress", {
       now: "2026-01-03T00:00:00.000Z",
       comment: makeCommentWithoutKind(),
     })
 
-    expect(result).toEqual({ ok: true, data: task })
+    expect(result).toEqual({
+      ok: true,
+      data: {
+        ...task,
+        updatedAt: NOW,
+        comments: [...task.comments, makeComment()],
+      },
+    })
+    expect(task.comments).toHaveLength(1)
+  })
+
+  test("preserves the full transition graph including direct blocking and resumption", () => {
+    const allowed: Record<Task["status"], readonly Task["status"][]> = {
+      backlog: ["todo", "blocked", "canceled"],
+      todo: ["in_progress", "blocked", "canceled"],
+      in_progress: ["need_info", "blocked", "pending_review", "canceled"],
+      need_info: ["in_progress", "canceled"],
+      blocked: ["backlog", "todo", "in_progress", "pending_review", "canceled"],
+      pending_review: ["in_progress", "blocked", "done", "canceled"],
+      done: [],
+      canceled: [],
+    }
+    const statuses = Object.keys(allowed) as Task["status"][]
+    for (const from of statuses) {
+      for (const to of statuses) {
+        const task = makeTask({ status: from })
+        const result = transitionTaskStatus(task, to, {
+          now: NOW,
+          comment: makeComment({ kind: to === "need_info" ? "need_info" : "regular" }),
+        })
+        if (from === to || allowed[from].includes(to)) {
+          expect(result).toMatchObject({ ok: true, data: { status: to } })
+          if (result.ok && to !== "in_progress") {
+            expect(result.data.inProgressSince).toBeUndefined()
+          }
+        } else {
+          expect(result).toMatchObject({
+            ok: false,
+            error: { code: "invalid_transition", details: { from, to } },
+          })
+        }
+        expect(task).toEqual(makeTask({ status: from }))
+      }
+    }
+  })
+
+  test("validates new blocker evidence even when already blocked", () => {
+    for (const status of ["backlog", "todo", "pending_review", "blocked"] as const) {
+      for (const content of ["", "é".repeat(32_769), 123, undefined]) {
+        const task = makeTask({ status })
+        expect(
+          transitionTaskStatus(task, "blocked", {
+            now: NOW,
+            comment: makeComment({ content: content as string }),
+          })
+        ).toMatchObject({ ok: false, error: { code: "validation_error" } })
+        expect(task).toEqual(makeTask({ status }))
+      }
+    }
+    expect(
+      transitionTaskStatus(makeTask(), "blocked", {
+        now: NOW,
+        comment: makeComment({ content: "é".repeat(32_768) }),
+      })
+    ).toMatchObject({ ok: true })
   })
 })
 
