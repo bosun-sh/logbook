@@ -354,3 +354,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, the CI gate to ru
 ## license
 
 [Apache-2.0](LICENSE)
+
+For retries after a lost mutation response, see [durable operation identities](docs/operation-identity.md), including receipt lookup and recovery limits.

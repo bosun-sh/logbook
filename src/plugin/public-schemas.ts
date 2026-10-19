@@ -161,6 +161,12 @@ const syncManualResolutionRecordSchema = {
 } as const
 
 export const publicToolSchemas = {
+  "operation.get": jsonSchema({
+    type: "object",
+    properties: { operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" } },
+    required: ["operationId"],
+    additionalProperties: false,
+  }),
   "context.attach": jsonSchema({
     type: "object",
     properties: {
@@ -252,6 +258,7 @@ export const publicToolSchemas = {
   "epic.create": jsonSchema({
     type: "object",
     properties: {
+      operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" },
       title: nonEmptyStringSchema,
       description: nonEmptyStringSchema,
       outcome: nonEmptyStringSchema,
@@ -328,6 +335,7 @@ export const publicToolSchemas = {
   "story.create": jsonSchema({
     type: "object",
     properties: {
+      operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" },
       epicId: idSchema,
       title: nonEmptyStringSchema,
       description: nonEmptyStringSchema,
@@ -482,6 +490,7 @@ export const publicToolSchemas = {
   "task.create": jsonSchema({
     type: "object",
     properties: {
+      operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" },
       title: nonEmptyStringSchema,
       description: nonEmptyStringSchema,
       definitionOfDone: nonEmptyStringSchema,
@@ -510,6 +519,7 @@ export const publicToolSchemas = {
   "task.edit": jsonSchema({
     type: "object",
     properties: {
+      operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" },
       id: idSchema,
       title: { type: "string" },
       description: { type: "string" },
@@ -526,6 +536,7 @@ export const publicToolSchemas = {
   "task.estimate": jsonSchema({
     type: "object",
     properties: {
+      operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" },
       id: idSchema,
       predictedKTokens: { type: "number", minimum: 0 },
       complexity: { type: "string", enum: [...complexityEnum] },
@@ -561,6 +572,7 @@ export const publicToolSchemas = {
   "task.update": jsonSchema({
     type: "object",
     properties: {
+      operationId: { type: "string", minLength: 1, maxLength: 256, pattern: "\\S" },
       id: idSchema,
       newStatus: { type: "string", enum: [...taskStatusEnum] },
       comment: taskUpdateCommentSchema,
