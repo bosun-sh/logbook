@@ -8,6 +8,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.2.0] - 2026-10-18
+
+### Added
+
+- Optional workspace-scoped `operationId` on epic/story/task creation, task edits, lifecycle updates and persisted estimates, with durable applied/replayed receipts and public `operation.get` lookup. Interrupted identified mutations recover the original IDs, results and hierarchy links; conflicting identity reuse and uncertain writes fail explicitly. ([#16](https://github.com/bosun-sh/logbook/issues/16), [#18](https://github.com/bosun-sh/logbook/pull/18))
+
+### Changed
+
+- Tasks can block and resume directly from backlog, todo and pending review with validated blocker evidence. Same-status comments append without a fake lifecycle transition. ([#14](https://github.com/bosun-sh/logbook/issues/14), [#19](https://github.com/bosun-sh/logbook/pull/19))
+
+### Fixed
+
+- Persist exact valid task estimates above 64 kilotokens without changing the existing nested estimate schema. ([#15](https://github.com/bosun-sh/logbook/issues/15), [#17](https://github.com/bosun-sh/logbook/pull/17))
+- Preserve canonical validation and storage errors through public task updates instead of reporting existing tasks as missing.
+
+### Upgrade and rollback
+
+- Entity JSONL schemas and paths are unchanged; the operation journal initializes on the first identified call with format version 1 and rejects unsupported versions.
+- Coordinate a single owning writer when using operation identities: the journal does not fence old versions, unidentified calls, hooks, automatic Linear sync or independent clients writing outside this mechanism. Stop all writers before upgrade or restoration and back up the entire `.logbook` directory, including the journal and WAL, with its matching package. Prior package 2.1.0 does not participate in operation identity; keep old writers stopped and restore a consistent pre-upgrade backup before returning to its workflow. See the [operation identity contract](https://github.com/bosun-sh/logbook/blob/v2.2.0/docs/operation-identity.md) for recovery limits and procedures.
+
+---
+
 ## [2.1.0] - 2026-06-28
 
 ---
@@ -177,7 +199,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Requires Bun ≥ 1.0.0
 - Two production dependencies: `effect`, `zod`
 
-[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/bosun-sh/logbook/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/bosun-sh/logbook/compare/v2.0.3...v2.1.0
 [2.0.3]: https://github.com/bosun-sh/logbook/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/bosun-sh/logbook/compare/v2.0.1...v2.0.2
