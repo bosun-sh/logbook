@@ -228,7 +228,8 @@ export const createMcpServer = (options: CreateMcpServerOptions = {}): McpServer
   }
 }
 
-const shouldAutoLinearPull = (toolId: string): boolean => !toolId.startsWith("sync.")
+const shouldAutoLinearPull = (toolId: string): boolean =>
+  !toolId.startsWith("sync.") && toolId !== "operation.get"
 
 const shouldAutoLinearPush = (toolId: string): boolean => TASK_WRITE_TOOL_IDS.has(toolId)
 

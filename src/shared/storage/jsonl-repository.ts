@@ -1,7 +1,9 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises"
+import { mkdir, rename, writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { Clock, Effect } from "effect"
 import type { ZodType } from "zod"
+
+import { readCanonicalFile, stageCanonicalWrite } from "./operation-staging.js"
 
 const DEFAULT_MAX_SCAN_LINES = 100_000
 const DEFAULT_MAX_LINE_BYTES = 1_048_576
@@ -112,8 +114,11 @@ export class JsonlRepository<T extends JsonlEntity> {
         nextLines.push(this.serialize(entity))
         this.validateSerializedLines(nextLines)
 
-        await this.ensureParentDirectory()
-        await writeFile(this.filePath, `${nextLines.join("\n")}\n`, "utf8")
+        const content = `${nextLines.join("\n")}\n`
+        if (!(await stageCanonicalWrite(this.filePath, content))) {
+          await this.ensureParentDirectory()
+          await writeFile(this.filePath, content, "utf8")
+        }
         return entity
       },
       catch: (error) => this.mapWriteError(error),
@@ -211,7 +216,7 @@ export class JsonlRepository<T extends JsonlEntity> {
   }
 
   private async readState(): Promise<RepositoryState<T>> {
-    const content = await readFile(this.filePath, "utf8").catch((error: unknown) => {
+    const content = await readCanonicalFile(this.filePath).catch((error: unknown) => {
       if (isEnoent(error) && this.initialized) {
         return ""
       }
@@ -298,6 +303,8 @@ export class JsonlRepository<T extends JsonlEntity> {
   }
 
   private async atomicRewrite(lines: readonly string[]): Promise<void> {
+    if (await stageCanonicalWrite(this.filePath, lines.length === 0 ? "" : `${lines.join("\n")}\n`))
+      return
     await this.ensureParentDirectory()
 
     let lastError: unknown

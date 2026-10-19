@@ -1,9 +1,11 @@
+import type { JsonlRepositoryError } from "@logbook/shared/storage/jsonl-repository.js"
 import { Context, type Effect } from "effect"
 import type { Task } from "./schema.js"
 
 export type TaskStatus = Task["status"]
 
 export type TaskRepositoryError =
+  | JsonlRepositoryError
   | { readonly _tag: "not_found"; readonly taskId: string }
   | {
       readonly _tag: "transition_not_allowed"

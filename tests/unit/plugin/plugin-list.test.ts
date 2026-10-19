@@ -48,6 +48,14 @@ describe("listPlugins", () => {
             toolIds: ["hook.list", "hook.run"],
           },
           {
+            id: "operation",
+            name: "operation",
+            version: LOGBOOK_VERSION,
+            enabled: true,
+            groups: ["operation"],
+            toolIds: ["operation.get"],
+          },
+          {
             id: "plugin",
             name: "plugin",
             version: LOGBOOK_VERSION,

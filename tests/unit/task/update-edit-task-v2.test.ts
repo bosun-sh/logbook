@@ -36,7 +36,7 @@ class InMemoryTaskRepository implements TaskRepositoryShape {
     return Effect.succeed(undefined)
   }
 
-  update(task: Task) {
+  update(task: Task): Effect.Effect<void, unknown> {
     this.store.set(task.id, task)
     return Effect.succeed(undefined)
   }
@@ -126,7 +126,7 @@ describe("task v2 update/edit use cases", () => {
     expect(result.data.task.comments[0]?.kind).toBe("regular")
   })
 
-  test("updateTaskStatus treats same-status transitions as no-ops", async () => {
+  test("updateTaskStatus treats same-status calls without comments as no-ops", async () => {
     const repo = new InMemoryTaskRepository()
     const task = makeTask({
       status: "in_progress",
@@ -141,9 +141,6 @@ describe("task v2 update/edit use cases", () => {
           updateTaskStatus({
             id: task.id,
             newStatus: "in_progress",
-            comment: {
-              content: "This should be ignored",
-            },
           })
         ),
         makeLayer(repo)
@@ -198,6 +195,30 @@ describe("task v2 update/edit use cases", () => {
     expect(result.data.task.updatedAt).toBe("2026-01-03T09:10:11.123Z")
     expect(reply?.content).toBe("Attached in the latest run")
     expect(reply?.createdAt).toBe("2026-01-03T09:10:11.123Z")
+  })
+
+  test("same-status evidence retains storage errors and leaves the task unchanged", async () => {
+    const repo = new InMemoryTaskRepository()
+    const task = makeTask()
+    await run(repo.save(task))
+    repo.update = () => Effect.fail({ _tag: "storage_error", message: "Write unavailable" })
+
+    const result = await run(
+      Effect.provide(
+        updateTaskStatus({
+          id: task.id,
+          newStatus: task.status,
+          comment: { content: "Attempt evidence" },
+        }),
+        makeLayer(repo)
+      )
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "storage_error", message: "Write unavailable" },
+    })
+    expect(await run(repo.findById(task.id))).toEqual(task)
   })
 
   test("updateTaskStatus returns lifecycle validation failures as structured errors", async () => {

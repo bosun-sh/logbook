@@ -9,6 +9,7 @@ import type { SyncConflict, SyncEvent } from "@logbook/sync/schema.js"
 import { SyncConflictSchema, SyncEventSchema } from "@logbook/sync/schema.js"
 import { TaskRepository } from "@logbook/task/ports.js"
 import { Context, Effect, Layer } from "effect"
+import { type OperationCheckpoint, OperationWorkspace } from "./operations.js"
 import {
   ContextRepository,
   EpicRepository,
@@ -27,7 +28,7 @@ const SyncConflictRepositoryTag =
   Context.GenericTag<JsonlRepository<SyncConflict>>("SyncConflictRepository")
 const LinearGraphQLClientTag = Context.GenericTag<LinearGraphQLClient>("LinearGraphQLClient")
 
-export const makeLogbookLayer = (workspaceRoot: string) => {
+export const makeLogbookLayer = (workspaceRoot: string, checkpoint?: OperationCheckpoint) => {
   const paths = resolveWorkspacePaths(workspaceRoot)
   const opts = { workspaceRoot, initialized: true }
 
@@ -55,6 +56,7 @@ export const makeLogbookLayer = (workspaceRoot: string) => {
   const taskRepo = new WorkspaceTaskRepository(opts)
 
   return Layer.mergeAll(
+    Layer.succeed(OperationWorkspace, { root: workspaceRoot, checkpoint }),
     Layer.succeed(TaskRepository, taskRepo.asPort()),
     Layer.succeed(StoryRepositoryTag, new StoryRepository(opts)),
     Layer.succeed(EpicRepositoryTag, new EpicRepository(opts)),

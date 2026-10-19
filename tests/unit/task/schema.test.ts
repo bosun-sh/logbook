@@ -86,4 +86,22 @@ describe("TaskSchema", () => {
       expect(TaskSchema.parse(legacy)).toEqual(legacy)
     }
   })
+
+  test("keeps legacy blocked records with empty comments readable", () => {
+    const legacy: z.input<typeof TaskSchema> = {
+      ...taskRecord,
+      status: "blocked",
+      comments: [
+        {
+          id: "legacy-comment",
+          title: "Old blocker",
+          content: "",
+          kind: "regular",
+          createdAt: taskRecord.createdAt,
+          replies: [],
+        },
+      ],
+    }
+    expect(TaskSchema.parse(legacy)).toEqual(legacy)
+  })
 })
