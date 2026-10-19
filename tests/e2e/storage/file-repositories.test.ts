@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test"
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { ContextEntry } from "@logbook/context/schema.js"
@@ -182,5 +182,82 @@ describe("workspace file repositories", () => {
       deletedAt: tombstonedAt,
       updatedAt: tombstonedAt,
     })
+  })
+
+  test("task port preserves malformed, invalid and unreadable storage errors on reads and writes", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-port-errors-"))
+    await mkdir(join(workspaceRoot, ".logbook/storage"), { recursive: true })
+    const file = join(workspaceRoot, ".logbook/storage/tasks.jsonl")
+    const port = new TaskRepository({ workspaceRoot, initialized: true }).asPort()
+    for (const [content, tag] of [
+      ["broken-json\n", "malformed_record"],
+      ["{}\n", "validation_error"],
+    ] as const) {
+      await writeFile(file, content)
+      for (const action of [
+        port.findById("task-1"),
+        port.save(makeTask()),
+        port.update(makeTask()),
+      ]) {
+        expect(await run(Effect.either(action))).toMatchObject({
+          _tag: "Left",
+          left: { _tag: tag, filePath: file, taskId: "task-1" },
+        })
+      }
+      expect(await readFile(file, "utf8")).toBe(content)
+    }
+    await chmod(file, 0o000)
+    try {
+      for (const action of [
+        port.findById("task-1"),
+        port.save(makeTask()),
+        port.update(makeTask()),
+      ]) {
+        expect(await run(Effect.either(action))).toMatchObject({
+          _tag: "Left",
+          left: { _tag: "storage_error", filePath: file, cause: { code: "EACCES" } },
+        })
+      }
+    } finally {
+      await chmod(file, 0o600)
+    }
+  })
+
+  test("task port preserves failed writes and actual missing/duplicate entity errors", async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), "logbook-port-write-errors-"))
+    const storage = join(workspaceRoot, ".logbook/storage")
+    await mkdir(storage, { recursive: true })
+    const file = join(storage, "tasks.jsonl")
+    const port = new TaskRepository({ workspaceRoot, initialized: true }).asPort()
+    const task = makeTask()
+    for (const action of [port.findById(task.id), port.update(task)]) {
+      expect(await run(Effect.either(action))).toMatchObject({
+        _tag: "Left",
+        left: { _tag: "not_found", taskId: task.id },
+      })
+    }
+    await run(port.save(task))
+    expect(await run(Effect.either(port.save(task)))).toMatchObject({
+      _tag: "Left",
+      left: { _tag: "conflict", taskId: task.id },
+    })
+    const before = await readFile(file, "utf8")
+    await chmod(file, 0o400)
+    await chmod(storage, 0o555)
+    try {
+      for (const action of [
+        port.save({ ...task, id: "task-2" }),
+        port.update({ ...task, title: "Edit" }),
+      ]) {
+        expect(await run(Effect.either(action))).toMatchObject({
+          _tag: "Left",
+          left: { _tag: "storage_error", operation: "write", filePath: file },
+        })
+      }
+      expect(await readFile(file, "utf8")).toBe(before)
+    } finally {
+      await chmod(storage, 0o755)
+      await chmod(file, 0o600)
+    }
   })
 })

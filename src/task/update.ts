@@ -37,6 +37,13 @@ export const updateTaskStatus = (
   input: UpdateTaskStatusInput
 ): Effect.Effect<ToolResult<UpdateTaskStatusResult>, never, TaskRepository | Clock.Clock> =>
   Effect.gen(function* () {
+    if (
+      input.comment !== undefined &&
+      (input.comment === null || typeof input.comment !== "object")
+    ) {
+      return error("validation_error", "comment must be an object")
+    }
+
     const repo = (yield* TaskRepository) as unknown as TaskRepositoryShape
     const now = yield* nowIso()
     const task = yield* Effect.either(repo.findById(input.id))
