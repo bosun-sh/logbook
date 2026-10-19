@@ -1,6 +1,6 @@
 {
   "name": "@bosun-sh/logbook",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "File-system kanban board CLI and MCP server for AI agents",
   "license": "Apache-2.0",
   "type": "module",
