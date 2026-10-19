@@ -8,7 +8,6 @@ import { TaskRepository } from "./ports.js"
 import { type Task, TaskSchema } from "./schema.js"
 
 const VALID_FIBONACCI = [1, 2, 3, 5, 8, 13, 21] as const
-const MAX_PREDICTED_KTOKENS = 64
 const MAX_RATIONALE_BYTES = 4096
 const textEncoder = new TextEncoder()
 
@@ -122,13 +121,6 @@ const validateEstimateInput = (input: EstimateTaskInput): ToolResult<never> | nu
   if (input.predictedKTokens <= 0) {
     return error("validation_error", "predictedKTokens must be positive", {
       predictedKTokens: input.predictedKTokens,
-    })
-  }
-
-  if (input.predictedKTokens > MAX_PREDICTED_KTOKENS) {
-    return error("validation_error", "predictedKTokens must be at most 64", {
-      predictedKTokens: input.predictedKTokens,
-      maxPredictedKTokens: MAX_PREDICTED_KTOKENS,
     })
   }
 
