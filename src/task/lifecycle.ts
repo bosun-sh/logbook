@@ -12,12 +12,12 @@ type TransitionOptions = {
 }
 
 const allowedTransitions: Record<TaskStatus, readonly TaskStatus[]> = {
-  backlog: ["todo", "canceled"],
-  todo: ["in_progress", "canceled"],
+  backlog: ["todo", "blocked", "canceled"],
+  todo: ["in_progress", "blocked", "canceled"],
   in_progress: ["need_info", "blocked", "pending_review", "canceled"],
   need_info: ["in_progress", "canceled"],
-  blocked: ["in_progress", "canceled"],
-  pending_review: ["in_progress", "done", "canceled"],
+  blocked: ["backlog", "todo", "in_progress", "pending_review", "canceled"],
+  pending_review: ["in_progress", "blocked", "done", "canceled"],
   done: [],
   canceled: [],
 }
@@ -32,11 +32,11 @@ export const transitionTaskStatus = (
     return priorityError
   }
 
-  if (task.status === nextStatus) {
+  if (task.status === nextStatus && options.comment === undefined) {
     return { ok: true, data: task }
   }
 
-  if (!allowedTransitions[task.status].includes(nextStatus)) {
+  if (task.status !== nextStatus && !allowedTransitions[task.status].includes(nextStatus)) {
     return error(
       "invalid_transition",
       `cannot transition task from ${task.status} to ${nextStatus}`,
@@ -51,6 +51,10 @@ export const transitionTaskStatus = (
   const commentError = validateTransitionComment(nextStatus, comment)
   if (commentError) {
     return commentError
+  }
+
+  if (task.status === nextStatus && comment) {
+    return appendTaskComment(task, comment)
   }
 
   const nextTask: Task = {
@@ -111,6 +115,9 @@ const validateTransitionComment = (
   if (nextStatus === "blocked") {
     if (!comment || (comment.kind !== "regular" && comment.kind !== "need_info")) {
       return error("validation_error", "blocked transitions require a regular or need_info comment")
+    }
+    if (comment.content.length === 0) {
+      return error("validation_error", "blocked transitions require nonempty comment content")
     }
   }
 
