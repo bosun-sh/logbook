@@ -80,4 +80,10 @@ describe("TaskSchema", () => {
       })
     ).toThrow()
   })
+  test("keeps legacy zero, fractional and larger stored estimates readable", () => {
+    for (const predictedKTokens of [0, 0.5, 128]) {
+      const legacy = { ...taskRecord, estimate: { ...taskRecord.estimate, predictedKTokens } }
+      expect(TaskSchema.parse(legacy)).toEqual(legacy)
+    }
+  })
 })

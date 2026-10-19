@@ -54,19 +54,21 @@ describe("defaultTaskEstimate", () => {
     })
   })
 
-  test("rejects predictedKTokens above the cap", () => {
-    const result = defaultTaskEstimate({
-      predictedKTokens: 65,
-      complexity: "small",
-    })
+  test("preserves predictions at and above the former cap with token bucket 21", () => {
+    for (const predictedKTokens of [64, 65, 128]) {
+      expect(defaultTaskEstimate({ predictedKTokens, complexity: "large" })).toMatchObject({
+        ok: true,
+        data: { predictedKTokens, fibonacci: 21 },
+      })
+    }
+  })
 
-    expect(result).toMatchObject({
-      ok: false,
-      error: {
-        code: "validation_error",
-        message: "predictedKTokens must be at most 64",
-      },
-    })
+  test("retains finite positive integer command validation", () => {
+    for (const predictedKTokens of [Number.NaN, Number.POSITIVE_INFINITY, -1, 0, 1.5, "128"]) {
+      expect(
+        defaultTaskEstimate({ predictedKTokens: predictedKTokens as number, complexity: "small" })
+      ).toMatchObject({ ok: false, error: { code: "validation_error" } })
+    }
   })
 
   test("rejects rationale values above the byte limit", () => {
@@ -83,6 +85,20 @@ describe("defaultTaskEstimate", () => {
         message: "rationale exceeds 4096 bytes",
       },
     })
+    expect(
+      defaultTaskEstimate({
+        predictedKTokens: 128,
+        complexity: "large",
+        rationale: "é".repeat(2048),
+      })
+    ).toMatchObject({ ok: true })
+    expect(
+      defaultTaskEstimate({
+        predictedKTokens: 128,
+        complexity: "large",
+        rationale: "é".repeat(2049),
+      })
+    ).toMatchObject({ ok: false, error: { code: "validation_error" } })
   })
 
   test("rejects missing complexity at runtime", () => {
