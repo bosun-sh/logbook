@@ -15,6 +15,14 @@ describe("listPlugins", () => {
       data: {
         items: [
           {
+            id: "board",
+            name: "board",
+            version: LOGBOOK_VERSION,
+            enabled: true,
+            groups: ["board"],
+            toolIds: ["board.render"],
+          },
+          {
             id: "context",
             name: "context",
             version: LOGBOOK_VERSION,

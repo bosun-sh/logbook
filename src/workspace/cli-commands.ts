@@ -16,6 +16,7 @@ const colonCommands = registry.toolIds.map((toolId) => ({
 
 export const cliCommands = Object.freeze([
   ...colonCommands,
+  { alias: "board", toolId: "board.render" },
   ...v1CliAliases,
 ]) satisfies readonly CliCommand[]
 

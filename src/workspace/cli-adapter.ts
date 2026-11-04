@@ -27,6 +27,7 @@ Common commands:
   logbook init
   logbook workspace:init
   logbook workspace:status
+  logbook board --root ~/repos --out /tmp/board.html --open
   logbook task:create --title "..." --description "..." --definition-of-done "..."
   logbook task:list --status "*"
   logbook task:current

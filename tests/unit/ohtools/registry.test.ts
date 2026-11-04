@@ -7,6 +7,7 @@ import { createLogbookApp } from "@logbook/workspace/ohtools-app.js"
 import { Effect } from "effect"
 
 const EXPECTED_TOOL_IDS = [
+  "board.render",
   "context.attach",
   "context.create",
   "context.delete",
@@ -50,6 +51,7 @@ const EXPECTED_TOOL_IDS = [
 ] as const
 
 const EXPECTED_PLUGIN_NAMES = [
+  "board",
   "context",
   "epic",
   "hook",
@@ -72,6 +74,7 @@ describe("logbook ohtools registry", () => {
 
     expect(toolIds).toEqual([...EXPECTED_TOOL_IDS])
     expect(groupIds).toEqual([
+      "board",
       "context",
       "epic",
       "hook",
@@ -82,7 +85,7 @@ describe("logbook ohtools registry", () => {
       "task",
       "workspace",
     ])
-    expect(toolIds).toHaveLength(40)
+    expect(toolIds).toHaveLength(41)
     expect(toolIds.every((id) => LOWERCASE_DOTTED_ID.test(id))).toBe(true)
     expect(toolIds.filter((id) => id.startsWith("workspace."))).toEqual([
       "workspace.init",
@@ -149,6 +152,14 @@ describe("logbook ohtools registry", () => {
       ok: true,
       data: {
         items: [
+          {
+            id: "board",
+            name: "board",
+            version: LOGBOOK_VERSION,
+            enabled: true,
+            groups: ["board"],
+            toolIds: ["board.render"],
+          },
           {
             id: "context",
             name: "context",
