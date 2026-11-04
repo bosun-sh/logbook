@@ -36,6 +36,7 @@ import { assignTaskModel, assignTaskPhaseModel } from "@logbook/task/model-assig
 import { assignTaskSession } from "@logbook/task/session-assignment.js"
 import { updateTaskStatus } from "@logbook/task/update.js"
 import { getOperation, withOperationIdentity } from "@logbook/workspace/operations.js"
+import { boardRenderTool } from "./board-tool.js"
 import { hookListTool, hookRunTool } from "./hook-tools.js"
 import { linearPullTool } from "./linear-pull-tool.js"
 import { linearPushTool } from "./linear-push-tool.js"
@@ -192,6 +193,7 @@ const workspaceTools = [
   workspaceInitTool as unknown as AnyDefinedTool,
   workspaceStatusTool as unknown as AnyDefinedTool,
 ] as const
+const boardTools = [boardRenderTool as unknown as AnyDefinedTool] as const
 const hookTools = [
   hookListTool as unknown as AnyDefinedTool,
   hookRunTool as unknown as AnyDefinedTool,
@@ -251,6 +253,7 @@ const defaultPluginDefinitions: readonly StaticPluginDefinition[] = [
     taskListTool,
     taskUpdateTool,
   ]),
+  createPluginDefinition("board", "Board tools.", boardTools),
   createPluginDefinition("sync", "Sync tools.", syncTools),
   createPluginDefinition("workspace", "Workspace tools.", workspaceTools),
 ]

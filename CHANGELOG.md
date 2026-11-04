@@ -8,6 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ---
 
+## [2.3.0] - 2026-11-03
+
+### Added
+
+- `board.render` tool and `logbook board` command: render every logbook board under a root as one self-contained, read-only HTML kanban, with tasks waiting on the user first.
+
+---
+
 ## [2.2.0] - 2026-10-18
 
 ### Added
@@ -199,7 +207,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Requires Bun ≥ 1.0.0
 - Two production dependencies: `effect`, `zod`
 
-[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/bosun-sh/logbook/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/bosun-sh/logbook/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/bosun-sh/logbook/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/bosun-sh/logbook/compare/v2.0.3...v2.1.0
 [2.0.3]: https://github.com/bosun-sh/logbook/compare/v2.0.2...v2.0.3

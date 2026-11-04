@@ -69,7 +69,7 @@ add `.logbook/storage/` to `.gitignore` to keep runtime data out of version cont
 
 ## mcp tools by plugin
 
-connect `logbook mcp` as an MCP server and call any of the 38 tools below.
+connect `logbook mcp` as an MCP server and call any of the 41 tools below.
 
 ### task plugin
 
@@ -132,6 +132,14 @@ connect `logbook mcp` as an MCP server and call any of the 38 tools below.
 | `sync.conflicts.list` | List unresolved sync conflicts |
 | `sync.conflicts.resolve` | Resolve a conflict (`use_local`, `use_remote`, or `manual`) |
 
+### board plugin
+
+| Tool ID | Purpose |
+|---------|---------|
+| `board.render` | Render every board under a root as one read-only HTML kanban |
+
+`logbook board` scans `--root` (default: cwd, up to 6 levels deep) for `.logbook/` boards and writes a single self-contained HTML file (default `~/.cache/logbook/board.html`) with tasks waiting on you (`need_info`, `blocked`, `pending_review`) first. Boards that fail to load are reported as warnings; nothing is written to any board.
+
 ### workspace plugin
 
 | Tool ID | Purpose |
@@ -161,6 +169,9 @@ every tool is available as `logbook <tool-id-with-colons>`:
 logbook init
 logbook init --mcp-client claude --no-linear
 logbook init --mcp-client codex --no-linear
+
+# board across repos
+logbook board --root ~/repos --out /tmp/board.html --open
 
 # workspace
 logbook workspace:init

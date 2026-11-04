@@ -589,6 +589,15 @@ export const publicToolSchemas = {
     },
     additionalProperties: false,
   }),
+  "board.render": jsonSchema({
+    type: "object",
+    properties: {
+      root: nonEmptyStringSchema,
+      out: nonEmptyStringSchema,
+      open: { type: "boolean" },
+    },
+    additionalProperties: false,
+  }),
   "workspace.status": jsonSchema({
     type: "object",
     properties: {
