@@ -168,6 +168,14 @@ logbook task:update --id <uuid> --new-status done
 
 When you use Logbook through MCP, agent tool calls automatically pull fresh Linear changes before task-facing work and push successful task updates back to Linear.
 
+## 8. see every board at once
+
+```bash
+logbook board --root ~/repos --open
+```
+
+writes one read-only HTML kanban of every `.logbook/` board under `--root`, with tasks waiting on you first.
+
 ---
 
 that's it. from here:
